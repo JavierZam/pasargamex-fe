@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Cards with 3D Hover Effect</title>
+    
+    <!-- Tailwind CSS Library -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Custom CSS for 3D Effects & Animations -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Tailwind: bg-gray-900 */
+        }
+
+        /* The scene creates the 3D stage for the cards. 
+           'perspective' is crucial for the depth illusion. */
+        .scene {
+            perspective: 1000px;
+        }
+
+        /* Base card styling */
+        .card {
+            /* Ensures child elements are positioned in the same 3D space */
+            transform-style: preserve-3d;
+            /* Applies rotation using CSS variables updated by JavaScript */
+            transform: rotateX(var(--rotateX, 0)) rotateY(var(--rotateY, 0));
+            /* By default, hide any elements that overflow the card's boundaries */
+            overflow: hidden;
+            /* Smooth transition for transform and a delayed overflow change */
+            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1), overflow 0s 0.6s;
+        }
+        
+        /* On hover, speed up the transform and allow overflow for the pop-out effect */
+        .card:hover {
+            overflow: visible;
+            transition: transform 0.1s linear, overflow 0s;
+        }
+
+        /* The artistic background that appears on hover */
+        .card-background {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            filter: blur(5px) brightness(0.7);
+            transition: opacity 0.6s ease;
+        }
+        .card:hover .card-background {
+            opacity: 1;
+        }
+
+        /* Wrapper for text content */
+        .card-content {
+            /* Pushes the text forward in 3D space */
+            transform: translateZ(40px);
+        }
+        
+        /* Wrapper for the images, handles the pop-out scale and position */
+        .card-image-wrapper {
+            transform: translateZ(var(--image-z, 50px)) scale(var(--image-scale, 1)) translateY(var(--image-y, 0));
+            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .card:hover .card-image-wrapper {
+             transition: transform 0.1s linear;
+        }
+        
+        /* General settings for both icon and character images */
+        .card-icon, .card-character {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            margin: auto;
+            transition: opacity 0.4s ease-in-out;
+        }
+
+        /* Styling for the icon image (before hover) */
+        .card-icon {
+            width: 9rem;
+            height: 9rem;
+            object-fit: cover;
+            border-radius: 9999px; /* rounded-full */
+            opacity: 1;
+        }
+
+        /* Styling for the character image (on hover) */
+        .card-character {
+            width: auto;
+            height: auto;
+            max-height: 20rem; /* Prevents image from being too large */
+            max-width: 15rem;
+            opacity: 0; /* Hidden by default */
+            /* Glow effect using a CSS variable for per-card customization */
+            filter: drop-shadow(0px 5px 15px var(--glow-color, rgba(255,255,255,0)));
+            transition: opacity 0.4s ease-in-out, filter 0.4s ease-in-out;
+        }
+
+        /* Fade out the icon on hover */
+        .card:hover .card-icon {
+            opacity: 0;
+        }
+
+        /* Fade in the character and enhance its glow on hover */
+        .card:hover .card-character {
+            opacity: 1;
+            filter: drop-shadow(0px 8px 25px var(--glow-color, rgba(255,255,255,0.5)));
+        }
+
+        /* A glare layer that follows the mouse for a lighting effect */
+        .card-glare {
+            position: absolute;
+            inset: 0;
+            border-radius: 0.75rem; /* rounded-xl */
+            background: radial-gradient(circle at var(--glare-x, 50%) var(--glare-y, 50%), rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0) 70%);
+            opacity: var(--glare-opacity, 0);
+            transition: opacity 0.5s;
+            pointer-events: none; /* Prevents the layer from blocking mouse events */
+            z-index: 10; /* Ensures the glare is on top */
+        }
+        .card:hover .card-glare {
+            opacity: var(--glare-opacity, 1);
+            transition: opacity 0.1s;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <div class="p-8 w-full max-w-7xl mx-auto">
+        <h1 class="text-3xl md:text-5xl font-bold text-white text-center mb-4">Games</h1>
+        <p class="text-lg text-gray-400 text-center mb-16 md:mb-24">Hover to see the character</p>
+        
+        <div class="scene grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
+
+            <!-- Card 1: Genshin Impact -->
+            <!-- The '--glow-color' variable allows for custom glow colors per card -->
+            <div class="card w-64 h-80 bg-gray-800 rounded-xl shadow-2xl relative border-2 border-gray-700/50 flex flex-col justify-end items-center" style="--glow-color: rgba(167, 139, 250, 0.5);">
+                <img src="img/genshin_character.png" alt="Game Background" class="card-background">
+                <div class="card-image-wrapper w-full h-full">
+                    <!-- Ensure the image paths match your folder structure -->
+                    <img src="img/genshin_logo.png" alt="Genshin Impact Icon" class="card-icon">
+                    <img src="img/genshin_character.png" alt="Genshin Impact Character" class="card-character">
+                </div>
+                <div class="card-content text-center pb-6">
+                    <h3 class="text-2xl font-bold text-white">Genshin Impact</h3>
+                </div>
+                <div class="card-glare"></div>
+            </div>
+
+            <!-- Card 2: Honkai: Star Rail -->
+            <div class="card w-64 h-80 bg-gray-800 rounded-xl shadow-2xl relative border-2 border-gray-700/50 flex flex-col justify-end items-center" style="--glow-color: rgba(236, 72, 153, 0.5);">
+                <img src="img/hsr_character.png" alt="Game Background" class="card-background">
+                <div class="card-image-wrapper w-full h-full">
+                    <img src="img/hsr_logo.png" alt="Honkai: Star Rail Icon" class="card-icon">
+                    <img src="img/hsr_character.png" alt="Honkai: Star Rail Character" class="card-character">
+                </div>
+                <div class="card-content text-center pb-6">
+                    <h3 class="text-2xl font-bold text-white">Honkai: Star Rail</h3>
+                </div>
+                <div class="card-glare"></div>
+            </div>
+
+            <!-- Card 3: Valorant -->
+            <div class="card w-64 h-80 bg-gray-800 rounded-xl shadow-2xl relative border-2 border-gray-700/50 flex flex-col justify-end items-center" style="--glow-color: rgba(239, 68, 68, 0.5);">
+                <img src="img/valorant_character.png" alt="Game Background" class="card-background">
+                <div class="card-image-wrapper w-full h-full">
+                    <img src="img/valorant_logo.png" alt="Valorant Icon" class="card-icon">
+                    <img src="img/valorant_character.png" alt="Valorant Character" class="card-character">
+                </div>
+                <div class="card-content text-center pb-6">
+                    <h3 class="text-2xl font-bold text-white">Valorant</h3>
+                </div>
+                 <div class="card-glare"></div>
+            </div>
+
+            <!-- Card 4: Mobile Legends -->
+            <div class="card w-64 h-80 bg-gray-800 rounded-xl shadow-2xl relative border-2 border-gray-700/50 flex flex-col justify-end items-center" style="--glow-color: rgba(59, 130, 246, 0.5);">
+                <img src="img/ml_character.png" alt="Game Background" class="card-background">
+                <div class="card-image-wrapper w-full h-full">
+                     <img src="img/ml_logo.jpg" alt="Mobile Legends Icon" class="card-icon">
+                    <img src="img/ml_character.png" alt="Mobile Legends Character" class="card-character">
+                </div>
+                <div class="card-content text-center pb-6">
+                    <h3 class="text-2xl font-bold text-white">Mobile Legends</h3>
+                </div>
+                 <div class="card-glare"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Select all card elements
+        const cards = document.querySelectorAll('.card');
+        // Set the maximum rotation angle for the cards
+        const maxRotation = 15;
+
+        // Loop over each card to attach event listeners
+        cards.forEach(card => {
+            const imageWrapper = card.querySelector('.card-image-wrapper');
+
+            // Event listener for mouse movement over the card
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                
+                // Calculate cursor position (x, y) relative to the card
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                // Normalize cursor position from -1 to 1 relative to the card's center
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const rotateXValue = (y - centerY) / centerY * -1; // Inverted for intuitive feel
+                const rotateYValue = (x - centerX) / centerX;
+
+                // Calculate the final rotation values
+                const finalRotateX = rotateXValue * maxRotation;
+                const finalRotateY = rotateYValue * maxRotation;
+
+                // Apply the rotation values to the CSS variables
+                card.style.setProperty('--rotateX', `${finalRotateX}deg`);
+                card.style.setProperty('--rotateY', `${finalRotateY}deg`);
+
+                // Update the glare position to follow the cursor
+                const glareX = (x / rect.width) * 100;
+                const glareY = (y / rect.height) * 100;
+                card.style.setProperty('--glare-x', `${glareX}%`);
+                card.style.setProperty('--glare-y', `${glareY}%`);
+                card.style.setProperty('--glare-opacity', `1`);
+
+                // Trigger the pop-out effect on the image wrapper
+                imageWrapper.style.setProperty('--image-scale', '1.2');
+                imageWrapper.style.setProperty('--image-y', '-40px');
+                imageWrapper.style.setProperty('--image-z', '120px');
+            });
+
+            // Event listener for when the mouse leaves the card
+            card.addEventListener('mouseleave', () => {
+                // Reset all properties to their initial state with a smooth transition
+                card.style.setProperty('--rotateX', '0deg');
+                card.style.setProperty('--rotateY', '0deg');
+                card.style.setProperty('--glare-opacity', `0`);
+                
+                imageWrapper.style.setProperty('--image-scale', '1');
+                imageWrapper.style.setProperty('--image-y', '0px');
+                imageWrapper.style.setProperty('--image-z', '50px');
+            });
+        });
+    </script>
+</body>
+</html>

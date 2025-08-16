@@ -1,0 +1,366 @@
+[
+  {
+    "name": "Free Fire",
+    "description": "Garena Free Fire adalah game battle royale mobile yang sangat populer di Indonesia. Bertahan hingga akhir di pulau terpencil dengan 50 pemain lainnya.",
+    "icon": "https://example.com/free-fire-icon.jpg",
+    "banner": "https://example.com/free-fire-banner.jpg",
+    "attributes": [
+      {
+        "name": "Current Rank",
+        "type": "select",
+        "required": true,
+        "options": ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Heroic", "Grand Master"],
+        "description": "Current Battle Royale rank"
+      },
+      {
+        "name": "Level",
+        "type": "number",
+        "required": true,
+        "description": "Account level"
+      },
+      {
+        "name": "Characters Owned",
+        "type": "number",
+        "required": false,
+        "description": "Number of characters owned"
+      },
+      {
+        "name": "Pets Count",
+        "type": "number",
+        "required": false,
+        "description": "Number of pets owned"
+      },
+      {
+        "name": "Diamonds Balance",
+        "type": "number",
+        "required": false,
+        "description": "Current diamond balance"
+      },
+      {
+        "name": "Elite Pass",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether account has Elite Pass"
+      },
+      {
+        "name": "Rare Skins Count",
+        "type": "number",
+        "required": false,
+        "description": "Number of rare/legendary skins"
+      }
+    ],
+    "status": "active",
+    "popularity_metrics": {
+      "total_products": 0,
+      "total_views": 0,
+      "total_transactions": 0,
+      "monthly_revenue": 0,
+      "growth_rate": 0,
+      "popularity_score": 0
+    },
+    "is_featured": true,
+    "display_priority": 1,
+    "is_trending": true,
+    "marketing_boost": 1.2
+  },
+  {
+    "name": "Valorant",
+    "description": "Valorant adalah game FPS taktis 5v5 dari Riot Games. Kombinasi sempurna antara kemampuan unik agent dan skill menembak yang presisi.",
+    "icon": "https://example.com/valorant-icon.jpg",
+    "banner": "https://example.com/valorant-banner.jpg",
+    "attributes": [
+      {
+        "name": "Current Rank",
+        "type": "select",
+        "required": true,
+        "options": ["Iron", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Immortal", "Radiant"],
+        "description": "Current competitive rank"
+      },
+      {
+        "name": "Peak Rank",
+        "type": "select",
+        "required": false,
+        "options": ["Iron", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Immortal", "Radiant"],
+        "description": "Highest achieved rank"
+      },
+      {
+        "name": "Region",
+        "type": "select",
+        "required": true,
+        "options": ["AP (Asia Pacific)", "NA (North America)", "EU (Europe)", "KR (Korea)", "BR (Brazil)", "LATAM"],
+        "description": "Account region"
+      },
+      {
+        "name": "Agents Unlocked",
+        "type": "number",
+        "required": false,
+        "description": "Number of agents unlocked"
+      },
+      {
+        "name": "Skins Count",
+        "type": "number",
+        "required": false,
+        "description": "Number of weapon skins"
+      },
+      {
+        "name": "VP Balance",
+        "type": "number",
+        "required": false,
+        "description": "Valorant Points balance"
+      },
+      {
+        "name": "Battle Pass",
+        "type": "boolean",
+        "required": false,
+        "description": "Current battle pass owned"
+      }
+    ],
+    "status": "active",
+    "popularity_metrics": {
+      "total_products": 0,
+      "total_views": 0,
+      "total_transactions": 0,
+      "monthly_revenue": 0,
+      "growth_rate": 0,
+      "popularity_score": 0
+    },
+    "is_featured": true,
+    "display_priority": 2,
+    "is_trending": true,
+    "marketing_boost": 1.3
+  },
+  {
+    "name": "Call of Duty Mobile",
+    "description": "COD Mobile membawa pengalaman Call of Duty legendary ke mobile. Battle royale, multiplayer, dan zombie mode dalam satu game.",
+    "icon": "https://example.com/cod-mobile-icon.jpg",
+    "banner": "https://example.com/cod-mobile-banner.jpg",
+    "attributes": [
+      {
+        "name": "MP Rank",
+        "type": "select",
+        "required": true,
+        "options": ["Rookie", "Veteran", "Elite", "Pro", "Master", "Grand Master", "Legendary"],
+        "description": "Multiplayer rank"
+      },
+      {
+        "name": "BR Rank",
+        "type": "select",
+        "required": true,
+        "options": ["Rookie", "Veteran", "Elite", "Pro", "Master", "Grand Master", "Legendary"],
+        "description": "Battle Royale rank"
+      },
+      {
+        "name": "Level",
+        "type": "number",
+        "required": true,
+        "description": "Player level"
+      },
+      {
+        "name": "Weapons Unlocked",
+        "type": "number",
+        "required": false,
+        "description": "Number of weapons unlocked"
+      },
+      {
+        "name": "CP Balance",
+        "type": "number",
+        "required": false,
+        "description": "COD Points balance"
+      },
+      {
+        "name": "Mythic Items",
+        "type": "number",
+        "required": false,
+        "description": "Number of mythic weapons/items"
+      },
+      {
+        "name": "Battle Pass",
+        "type": "boolean",
+        "required": false,
+        "description": "Current season battle pass"
+      }
+    ],
+    "status": "active",
+    "popularity_metrics": {
+      "total_products": 0,
+      "total_views": 0,
+      "total_transactions": 0,
+      "monthly_revenue": 0,
+      "growth_rate": 0,
+      "popularity_score": 0
+    },
+    "is_featured": true,
+    "display_priority": 3,
+    "is_trending": false,
+    "marketing_boost": 1.1
+  },
+  {
+    "name": "Arena of Valor",
+    "description": "Arena of Valor (AOV) adalah MOBA mobile premium dengan gameplay strategis 5v5. Game MOBA mobile terpopuler di Asia Tenggara.",
+    "icon": "https://example.com/aov-icon.jpg", 
+    "banner": "https://example.com/aov-banner.jpg",
+    "attributes": [
+      {
+        "name": "Current Rank",
+        "type": "select",
+        "required": true,
+        "options": ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master", "Conqueror"],
+        "description": "Current ranked tier"
+      },
+      {
+        "name": "Stars",
+        "type": "number",
+        "required": false,
+        "description": "Stars in current rank"
+      },
+      {
+        "name": "Heroes Owned",
+        "type": "number",
+        "required": false,
+        "description": "Number of heroes owned"
+      },
+      {
+        "name": "Skins Count",
+        "type": "number",
+        "required": false,
+        "description": "Number of hero skins"
+      },
+      {
+        "name": "Vouchers Balance",
+        "type": "number",
+        "required": false,
+        "description": "Current vouchers balance"
+      },
+      {
+        "name": "Server",
+        "type": "select",
+        "required": true,
+        "options": ["Indonesia", "Thailand", "Vietnam", "Taiwan", "Malaysia"],
+        "description": "Server region"
+      }
+    ],
+    "status": "active",
+    "popularity_metrics": {
+      "total_products": 0,
+      "total_views": 0,
+      "total_transactions": 0,
+      "monthly_revenue": 0,
+      "growth_rate": 0,
+      "popularity_score": 0
+    },
+    "is_featured": true,
+    "display_priority": 4,
+    "is_trending": false,
+    "marketing_boost": 1.0
+  },
+  {
+    "name": "Clash of Clans",
+    "description": "Clash of Clans adalah game strategy mobile klasik dari Supercell. Bangun desa, latih pasukan, dan bertarung dalam clan wars epic.",
+    "icon": "https://example.com/coc-icon.jpg",
+    "banner": "https://example.com/coc-banner.jpg", 
+    "attributes": [
+      {
+        "name": "Town Hall Level",
+        "type": "select",
+        "required": true,
+        "options": ["TH1", "TH2", "TH3", "TH4", "TH5", "TH6", "TH7", "TH8", "TH9", "TH10", "TH11", "TH12", "TH13", "TH14", "TH15", "TH16"],
+        "description": "Town Hall level"
+      },
+      {
+        "name": "Trophy Count",
+        "type": "number",
+        "required": true,
+        "description": "Current trophy count"
+      },
+      {
+        "name": "Gems Balance",
+        "type": "number",
+        "required": false,
+        "description": "Current gems balance"
+      },
+      {
+        "name": "Heroes Max Level",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether all heroes are max level"
+      },
+      {
+        "name": "Clan Level",
+        "type": "number",
+        "required": false,
+        "description": "Current clan level (if in clan)"
+      }
+    ],
+    "status": "active",
+    "popularity_metrics": {
+      "total_products": 0,
+      "total_views": 0,
+      "total_transactions": 0,
+      "monthly_revenue": 0,
+      "growth_rate": 0,
+      "popularity_score": 0
+    },
+    "is_featured": false,
+    "display_priority": 5,
+    "is_trending": false,
+    "marketing_boost": 0.9
+  },
+  {
+    "name": "Roblox",
+    "description": "Roblox adalah platform gaming dan creation yang memungkinkan pengguna membuat dan bermain game buatan komunitas. Populer untuk segala usia.",
+    "icon": "https://example.com/roblox-icon.jpg",
+    "banner": "https://example.com/roblox-banner.jpg",
+    "attributes": [
+      {
+        "name": "Account Age",
+        "type": "select",
+        "required": true,
+        "options": ["0-6 months", "6-12 months", "1-2 years", "2-5 years", "5+ years"],
+        "description": "Age of the account"
+      },
+      {
+        "name": "Robux Balance",
+        "type": "number",
+        "required": false,
+        "description": "Current Robux balance"
+      },
+      {
+        "name": "Premium Status",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether account has Roblox Premium"
+      },
+      {
+        "name": "Items Count",
+        "type": "number",
+        "required": false,
+        "description": "Number of owned items/accessories"
+      },
+      {
+        "name": "Friends Count",
+        "type": "number",
+        "required": false,
+        "description": "Number of friends"
+      },
+      {
+        "name": "Rare Items",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether account has rare/limited items"
+      }
+    ],
+    "status": "active",
+    "popularity_metrics": {
+      "total_products": 0,
+      "total_views": 0,
+      "total_transactions": 0,
+      "monthly_revenue": 0,
+      "growth_rate": 0,
+      "popularity_score": 0
+    },
+    "is_featured": false,
+    "display_priority": 6,
+    "is_trending": false,
+    "marketing_boost": 0.8
+  }
+]

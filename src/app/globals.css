@@ -1,0 +1,269 @@
+/* @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap'); */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Gaming-themed styles for PasargameX */
+.gaming-glow {
+  box-shadow: 0 0 20px rgba(220, 38, 38, 0.3);
+  transition: box-shadow 0.3s ease;
+}
+
+.gaming-glow:hover {
+  box-shadow: 0 0 30px rgba(220, 38, 38, 0.5);
+}
+
+.gaming-border {
+  border: 2px solid transparent;
+  background: linear-gradient(45deg, #DC2626, #1E3A8A) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: subtract;
+  mask-composite: subtract;
+}
+
+/* Smooth infinite scrolling animation for games carousel */
+@keyframes scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll {
+  animation: scroll 60s linear infinite;
+  will-change: transform;
+}
+
+.animate-scroll:hover {
+  animation-play-state: paused;
+}
+
+/* Smooth scroll behavior for manual scrolling */
+.carousel-container {
+  scroll-behavior: smooth;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+}
+
+.carousel-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.carousel-track {
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* Text utilities */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+/* Enhanced 3D Card Effects - Matching HTML Version */
+.scene {
+  perspective: 1200px;
+  overflow: visible;
+}
+
+.game-card-3d {
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rotateX, 0)) rotateY(var(--rotateY, 0));
+  overflow: hidden;
+  transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1), overflow 0s 0.6s;
+  width: 280px;
+  height: 380px;
+}
+
+.game-card-3d:hover {
+  overflow: visible;
+  transition: transform 0.1s linear, overflow 0s;
+}
+
+.card-background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  filter: blur(8px) brightness(0.4);
+  transition: opacity 0.6s ease;
+  z-index: 1;
+}
+
+.game-card-3d:hover .card-background {
+  opacity: 0.15;
+}
+
+.card-content {
+  transform: translateZ(60px);
+  position: relative;
+  z-index: 20;
+}
+
+.card-image-wrapper {
+  transform: translateZ(var(--image-z, 60px)) scale(var(--image-scale, 1)) translateY(var(--image-y, 0));
+  transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-card-3d:hover .card-image-wrapper {
+  transition: transform 0.1s linear;
+}
+
+.card-icon, .card-character {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.4s ease-in-out;
+}
+
+.card-icon {
+  width: 11rem;
+  height: 11rem;
+  object-fit: cover;
+  border-radius: 50%;
+  opacity: 1;
+  z-index: 10;
+}
+
+.card-character {
+  width: auto;
+  height: auto;
+  max-height: 24rem;
+  max-width: 18rem;
+  opacity: 0;
+  filter: drop-shadow(0px 5px 15px var(--glow-color, rgba(255,255,255,0)));
+  transition: opacity 0.4s ease-in-out, filter 0.4s ease-in-out;
+  z-index: 15;
+  object-fit: contain;
+}
+
+.game-card-3d:hover .card-icon {
+  opacity: 0;
+}
+
+.game-card-3d:hover .card-character {
+  opacity: 1;
+  filter: drop-shadow(0px 12px 35px var(--glow-color, rgba(255,255,255,0.8)));
+}
+
+.card-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.75rem;
+  background: radial-gradient(circle at var(--glare-x, 50%) var(--glare-y, 50%), rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0) 60%);
+  opacity: var(--glare-opacity, 0);
+  transition: opacity 0.5s;
+  pointer-events: none;
+  z-index: 25;
+}
+
+.game-card-3d:hover .card-glare {
+  opacity: var(--glare-opacity, 1);
+  transition: opacity 0.1s;
+}
