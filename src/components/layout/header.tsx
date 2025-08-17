@@ -44,6 +44,12 @@ export default function Header() {
                 Sell
               </Link>
               <Link
+                href="/seller/create-product"
+                className="text-green-400 hover:text-green-300 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                + Create Product
+              </Link>
+              <Link
                 href="/support"
                 className="text-gray-300 hover:text-brand-red px-3 py-2 rounded-md text-sm font-medium transition-colors"
               >
@@ -98,6 +104,12 @@ export default function Header() {
                 className="text-gray-300 hover:text-brand-red block px-3 py-2 rounded-md text-base font-medium"
               >
                 Sell
+              </Link>
+              <Link
+                href="/seller/create-product"
+                className="text-green-400 hover:text-green-300 block px-3 py-2 rounded-md text-base font-medium"
+              >
+                + Create Product
               </Link>
               <Link
                 href="/support"

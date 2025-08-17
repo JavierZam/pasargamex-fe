@@ -4,6 +4,7 @@ import './globals.css'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { CurrencyProvider } from '@/contexts/CurrencyContext'
 
 const inter = Inter({ subsets: ['latin'] })
 const orbitron = Orbitron({ 
@@ -73,13 +74,15 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} ${orbitron.variable} antialiased`}>
         <AuthProvider>
-          <div className="relative flex min-h-screen flex-col">
-            <Header />
-            <main className="flex-1">
-              {children}
-            </main>
-            <Footer />
-          </div>
+          <CurrencyProvider>
+            <div className="relative flex min-h-screen flex-col">
+              <Header />
+              <main className="flex-1">
+                {children}
+              </main>
+              <Footer />
+            </div>
+          </CurrencyProvider>
         </AuthProvider>
       </body>
     </html>

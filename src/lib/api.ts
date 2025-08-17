@@ -200,6 +200,7 @@ class ApiClient {
     max_price?: number
     search?: string
     status?: string
+    sort_by?: string
   }) {
     const searchParams = new URLSearchParams()
     if (params) {

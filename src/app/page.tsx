@@ -10,6 +10,7 @@ import SocialProofSection from '@/components/sections/social-proof'
 import TrustElementsSection from '@/components/sections/trust-elements'
 import FAQSection from '@/components/sections/faq'
 import UserProfileDropdown from '@/components/layout/UserProfileDropdown'
+import { CurrencySelector, PriceDisplay } from '@/components/ui'
 
 export default function HomePage() {
   return (
@@ -31,6 +32,7 @@ export default function HomePage() {
           </Link>
         </div>
         <div className="hidden md:flex items-center space-x-3">
+          <CurrencySelector />
           <UserProfileDropdown />
         </div>
       </nav>
@@ -112,7 +114,9 @@ export default function HomePage() {
                       <div className="text-white font-medium">Genshin Impact Account</div>
                       <div className="text-sm text-gray-400">AR 60 • 5-Star Characters</div>
                     </div>
-                    <div className="text-brand-red font-bold">$299</div>
+                    <div className="text-brand-red font-bold">
+                      <PriceDisplay basePrice={4750000} size="sm" />
+                    </div>
                   </div>
                   
                   <div className="flex items-center gap-4 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
@@ -123,7 +127,9 @@ export default function HomePage() {
                       <div className="text-white font-medium">Valorant Account</div>
                       <div className="text-sm text-gray-400">Immortal Rank • Rare Skins</div>
                     </div>
-                    <div className="text-brand-blue font-bold">$150</div>
+                    <div className="text-brand-blue font-bold">
+                      <PriceDisplay basePrice={2375000} size="sm" />
+                    </div>
                   </div>
                   
                   <div className="flex items-center gap-4 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
@@ -134,7 +140,9 @@ export default function HomePage() {
                       <div className="text-white font-medium">ML Boosting Service</div>
                       <div className="text-sm text-gray-400">Epic to Legend • Fast</div>
                     </div>
-                    <div className="text-brand-red font-bold">$25</div>
+                    <div className="text-brand-red font-bold">
+                      <PriceDisplay basePrice={395000} size="sm" />
+                    </div>
                   </div>
                 </div>
                 

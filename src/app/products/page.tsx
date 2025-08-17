@@ -2,29 +2,45 @@
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Button, Input, Card, CardContent, LoadingSpinner } from '@/components/ui'
-import { GameCard3D } from '@/components/ui'
+import { Button, Input, Card, CardContent, LoadingSpinner, PriceDisplay, ProductCard } from '@/components/ui'
 import { apiClient } from '@/lib/api'
 
 interface Product {
   id: string
+  game_title_id: string
+  seller_id: string
   title: string
   description: string
   price: number
-  category: string
-  image_url: string
-  seller_id: string
+  type: 'account' | 'topup' | 'boosting' | 'item'
+  attributes: Record<string, any>
+  images: Array<{
+    id: string
+    url: string
+    display_order: number
+  }>
+  status: 'draft' | 'active'
+  stock: number
+  sold_count: number
+  delivery_method: 'instant' | 'middleman' | 'both'
+  views: number
+  featured: boolean
+  created_at: string
+  updated_at: string
+  bumped_at: string
+  // Legacy fields for compatibility
+  category?: string
+  image_url?: string
   seller_username?: string
   rating?: number
   reviews_count?: number
-  created_at: string
   tags?: string[]
   is_featured?: boolean
 }
 
 interface ProductFilters {
   search: string
-  category: string
+  gameTitle: string
   minPrice: number
   maxPrice: number
   sortBy: 'newest' | 'price_low' | 'price_high' | 'rating' | 'popular'
@@ -32,21 +48,33 @@ interface ProductFilters {
   limit: number
 }
 
-const CATEGORIES = [
-  'All Categories',
-  'Action Games',
-  'RPG Games',
-  'Strategy Games',
-  'Sports Games',
-  'Racing Games',
-  'Adventure Games',
-  'Simulation Games',
-  'Puzzle Games',
-  'Indie Games',
-  'Game Accounts',
-  'Game Items',
-  'Game Currency'
-]
+interface GameTitle {
+  id: string
+  name: string
+  slug: string
+}
+
+const CATEGORIES = ['All', 'Accounts', 'Top-up', 'Boosting', 'Items']
+
+// Helper function to validate and get proper image URLs
+const getValidImageUrl = (imageUrl?: string, productTitle?: string) => {
+  // Check if image URL is valid
+  if (!imageUrl || 
+      imageUrl.includes('example.com') || 
+      imageUrl.includes('.claude\\image.png') ||
+      imageUrl.includes('.claude/image.png') ||
+      imageUrl === 'https://example.com/image1.jpg' ||
+      !imageUrl.startsWith('http')) {
+    // Generate placeholder
+    const randomColors = ['#DC2626', '#1D4ED8', '#059669', '#7C3AED', '#EA580C', '#0891B2']
+    const color = randomColors[Math.floor(Math.random() * randomColors.length)]
+    const text = productTitle?.slice(0, 10) || 'Product'
+    console.log('🖼️ Invalid image URL detected:', imageUrl, '- Using placeholder for:', productTitle)
+    return `/api/placeholder-image?text=${encodeURIComponent(text)}&width=400&height=300&bg=${encodeURIComponent(color)}`
+  }
+  console.log('✅ Valid image URL:', imageUrl)
+  return imageUrl
+}
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest First' },
@@ -64,12 +92,14 @@ function ProductsContent() {
   const [loading, setLoading] = useState(true)
   const [totalProducts, setTotalProducts] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
+  const [gameTitles, setGameTitles] = useState<GameTitle[]>([])
+  const [gameTitlesLoading, setGameTitlesLoading] = useState(true)
 
   const [filters, setFilters] = useState<ProductFilters>({
     search: searchParams.get('search') || '',
-    category: searchParams.get('category') || 'All Categories',
+    gameTitle: searchParams.get('gameTitle') || '',
     minPrice: Number(searchParams.get('minPrice')) || 0,
-    maxPrice: Number(searchParams.get('maxPrice')) || 10000,
+    maxPrice: Number(searchParams.get('maxPrice')) || 50000000, // 50M IDR max
     sortBy: (searchParams.get('sortBy') as ProductFilters['sortBy']) || 'newest',
     page: Number(searchParams.get('page')) || 1,
     limit: 12
@@ -82,9 +112,9 @@ function ProductsContent() {
     const params = new URLSearchParams()
     
     if (newFilters.search) params.set('search', newFilters.search)
-    if (newFilters.category !== 'All Categories') params.set('category', newFilters.category)
+    if (newFilters.gameTitle) params.set('gameTitle', newFilters.gameTitle)
     if (newFilters.minPrice > 0) params.set('minPrice', newFilters.minPrice.toString())
-    if (newFilters.maxPrice < 10000) params.set('maxPrice', newFilters.maxPrice.toString())
+    if (newFilters.maxPrice < 50000000) params.set('maxPrice', newFilters.maxPrice.toString())
     if (newFilters.sortBy !== 'newest') params.set('sortBy', newFilters.sortBy)
     if (newFilters.page > 1) params.set('page', newFilters.page.toString())
 
@@ -98,27 +128,171 @@ function ProductsContent() {
     try {
       const queryParams = {
         search: filters.search || undefined,
-        category: filters.category !== 'All Categories' ? filters.category : undefined,
+        game_title_id: filters.gameTitle || undefined,
         min_price: filters.minPrice > 0 ? filters.minPrice : undefined,
-        max_price: filters.maxPrice < 10000 ? filters.maxPrice : undefined,
+        max_price: filters.maxPrice < 50000000 ? filters.maxPrice : undefined,
         sort_by: filters.sortBy,
         page: filters.page,
         limit: filters.limit
       }
 
+      console.log('🔍 Loading products with filters:', queryParams)
       const response = await apiClient.getProducts(queryParams)
+      console.log('📦 Products API response:', response)
+      console.log('🔄 Backend URL called:', `${process.env.NEXT_PUBLIC_API_URL || 'https://pasargamex-api-244929333106.asia-southeast2.run.app'}/v1/products?${new URLSearchParams(queryParams).toString()}`)
       
       if (response.success && response.data) {
         const data = response.data as any
+        let productsList: Product[] = []
+        
         if (Array.isArray(data)) {
-          setProducts(data)
+          productsList = data
           setTotalProducts(data.length)
           setTotalPages(Math.ceil(data.length / filters.limit))
+        } else if (data.items) {
+          // Backend returns data.items structure
+          productsList = data.items
+          setTotalProducts(data.total || data.items.length)
+          setTotalPages(data.totalPages || Math.ceil((data.total || data.items.length) / filters.limit))
         } else if (data.products) {
-          setProducts(data.products)
+          productsList = data.products
           setTotalProducts(data.total || data.products.length)
           setTotalPages(Math.ceil((data.total || data.products.length) / filters.limit))
         }
+
+        // Enhance products with seller information if available
+        console.log('🔍 Processing products for seller info:', productsList.length)
+        
+        // Create a map to cache seller information to avoid duplicate API calls
+        const sellerCache = new Map()
+        
+        const enhancedProducts = await Promise.all(
+          productsList.map(async (product) => {
+            console.log('👤 Product seller info:', {
+              id: product.id,
+              seller_id: product.seller_id,
+              seller_username: product.seller_username,
+              allKeys: Object.keys(product)
+            })
+            
+            // If we already have seller_username, use it
+            if (product.seller_username) {
+              return {
+                ...product,
+                seller_username: product.seller_username
+              }
+            }
+            
+            // If we have seller_id, try to fetch seller info
+            if (product.seller_id) {
+              try {
+                // Check cache first
+                if (sellerCache.has(product.seller_id)) {
+                  const cachedSeller = sellerCache.get(product.seller_id)
+                  return {
+                    ...product,
+                    seller_username: cachedSeller
+                  }
+                }
+                
+                // Fetch seller info from API
+                console.log('🔍 Fetching seller info for:', product.seller_id)
+                const sellerResponse = await apiClient.getPublicSellerProfile(product.seller_id)
+                
+                if (sellerResponse.success && sellerResponse.data) {
+                  const responseData = sellerResponse.data as any
+                  console.log('🔍 Raw seller API response:', responseData)
+                  
+                  // The seller info is nested in the response.seller object
+                  const sellerData = responseData.seller || responseData
+                  console.log('👤 Seller object:', sellerData)
+                  
+                  const username = sellerData.username || 
+                                 sellerData.display_name || 
+                                 sellerData.name ||
+                                 sellerData.email?.split('@')[0] ||
+                                 sellerData.displayName ||
+                                 sellerData.uid ||
+                                 `Seller ${product.seller_id.slice(-4)}`
+                  
+                  // Cache the result
+                  sellerCache.set(product.seller_id, username)
+                  console.log('✅ Found seller:', username)
+                  
+                  return {
+                    ...product,
+                    seller_username: username
+                  }
+                } else {
+                  console.log('❌ Seller not found, using fallback')
+                  const fallback = `Seller ${product.seller_id.slice(-4)}`
+                  sellerCache.set(product.seller_id, fallback)
+                  return {
+                    ...product,
+                    seller_username: fallback
+                  }
+                }
+              } catch (error) {
+                console.log('❌ Error fetching seller:', error)
+                const fallback = `Seller ${product.seller_id.slice(-4)}`
+                sellerCache.set(product.seller_id, fallback)
+                return {
+                  ...product,
+                  seller_username: fallback
+                }
+              }
+            }
+            
+            // No seller_id available
+            return {
+              ...product,
+              seller_username: 'Unknown Seller'
+            }
+          })
+        )
+        
+        // Debug: Log products with their game title IDs and prices
+        console.log('🎮 Products loaded:', enhancedProducts.map(p => ({
+          id: p.id,
+          title: p.title,
+          price: p.price,
+          game_title_id: p.game_title_id,
+          seller_username: p.seller_username
+        })))
+        
+        // Debug: Log price sorting verification
+        const prices = enhancedProducts.map(p => p.price).filter(p => p != null)
+        console.log('💰 Product prices BEFORE frontend sort:', prices)
+        console.log('🔀 Current sort_by:', filters.sortBy)
+        
+        // Frontend fallback sorting (karena backend sort tidak berfungsi)
+        let sortedProducts = [...enhancedProducts]
+        switch (filters.sortBy) {
+          case 'price_low':
+            sortedProducts.sort((a, b) => (a.price || 0) - (b.price || 0))
+            console.log('🔄 Frontend sort: price low to high applied')
+            break
+          case 'price_high':
+            sortedProducts.sort((a, b) => (b.price || 0) - (a.price || 0))
+            console.log('🔄 Frontend sort: price high to low applied')
+            break
+          case 'rating':
+            sortedProducts.sort((a, b) => (b.rating || 0) - (a.rating || 0))
+            console.log('🔄 Frontend sort: rating applied')
+            break
+          case 'popular':
+            sortedProducts.sort((a, b) => (b.reviews_count || b.sold_count || 0) - (a.reviews_count || a.sold_count || 0))
+            console.log('🔄 Frontend sort: popular applied')
+            break
+          default: // newest
+            sortedProducts.sort((a, b) => new Date(b.created_at || b.updated_at).getTime() - new Date(a.created_at || a.updated_at).getTime())
+            console.log('🔄 Frontend sort: newest applied')
+        }
+        
+        const sortedPrices = sortedProducts.map(p => p.price).filter(p => p != null)
+        console.log('💰 Product prices AFTER frontend sort:', sortedPrices)
+        
+        setProducts(sortedProducts)
       } else {
         // Fallback to mock data for development
         const mockProducts = generateMockProducts(filters)
@@ -138,23 +312,64 @@ function ProductsContent() {
     }
   }, [filters])
 
+  // Load game titles for filter
+  const loadGameTitles = useCallback(async () => {
+    setGameTitlesLoading(true)
+    try {
+      const response = await apiClient.getGameTitles()
+      if (response.success && response.data) {
+        const data = response.data as any
+        // Handle different response structures
+        if (Array.isArray(data)) {
+          setGameTitles(data)
+        } else if (data.items && Array.isArray(data.items)) {
+          setGameTitles(data.items)
+        } else if (data.game_titles && Array.isArray(data.game_titles)) {
+          setGameTitles(data.game_titles)
+        } else {
+          console.warn('Unexpected game titles response structure:', data)
+          setGameTitles([])
+        }
+      } else {
+        setGameTitles([])
+      }
+    } catch (error) {
+      console.error('Error loading game titles:', error)
+      setGameTitles([])
+    } finally {
+      setGameTitlesLoading(false)
+    }
+  }, [])
+
   // Generate mock products for development
   const generateMockProducts = (currentFilters: ProductFilters) => {
-    const mockProducts: Product[] = Array.from({ length: 50 }, (_, i) => ({
-      id: `product-${i + 1}`,
-      title: `${CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)]} - Premium Item ${i + 1}`,
-      description: `High-quality gaming product with excellent features and guaranteed satisfaction. Perfect for serious gamers.`,
-      price: Math.floor(Math.random() * 500) + 10,
-      category: CATEGORIES[Math.floor(Math.random() * (CATEGORIES.length - 1)) + 1],
-      image_url: `https://picsum.photos/400/300?random=${i}`,
-      seller_id: `seller-${Math.floor(Math.random() * 10) + 1}`,
-      seller_username: `gamer${Math.floor(Math.random() * 1000)}`,
-      rating: Number((Math.random() * 2 + 3).toFixed(1)),
-      reviews_count: Math.floor(Math.random() * 500) + 10,
-      created_at: new Date(Date.now() - Math.random() * 10000000000).toISOString(),
-      tags: ['gaming', 'premium', 'verified'],
-      is_featured: Math.random() > 0.8
-    }))
+    const priceRanges = [
+      { min: 150000, max: 500000 },    // Low tier: 150k-500k IDR
+      { min: 500000, max: 1500000 },   // Mid tier: 500k-1.5M IDR
+      { min: 1500000, max: 5000000 },  // High tier: 1.5M-5M IDR
+      { min: 5000000, max: 15000000 }  // Premium: 5M-15M IDR
+    ]
+
+    const mockProducts: Product[] = Array.from({ length: 50 }, (_, i) => {
+      const priceRange = priceRanges[Math.floor(Math.random() * priceRanges.length)]
+      const price = Math.floor(Math.random() * (priceRange.max - priceRange.min)) + priceRange.min
+
+      return {
+        id: `product-${i + 1}`,
+        title: `${CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)]} - Premium Item ${i + 1}`,
+        description: `High-quality gaming product with excellent features and guaranteed satisfaction. Perfect for serious gamers.`,
+        price,
+        category: CATEGORIES[Math.floor(Math.random() * (CATEGORIES.length - 1)) + 1],
+        image_url: `/api/placeholder-image?text=Product&width=400&height=300&bg=%23${Math.floor(Math.random()*16777215).toString(16)}`,
+        seller_id: `seller-${Math.floor(Math.random() * 10) + 1}`,
+        seller_username: `gamer${Math.floor(Math.random() * 1000)}`,
+        rating: Number((Math.random() * 2 + 3).toFixed(1)),
+        reviews_count: Math.floor(Math.random() * 500) + 10,
+        created_at: new Date(Date.now() - Math.random() * 10000000000).toISOString(),
+        tags: ['gaming', 'premium', 'verified'],
+        is_featured: Math.random() > 0.8
+      }
+    })
 
     // Apply filters to mock data
     let filteredProducts = mockProducts
@@ -166,11 +381,7 @@ function ProductsContent() {
       )
     }
 
-    if (currentFilters.category !== 'All Categories') {
-      filteredProducts = filteredProducts.filter(product =>
-        product.category === currentFilters.category
-      )
-    }
+    // Game title filtering is handled by backend, not needed in mock data
 
     filteredProducts = filteredProducts.filter(product =>
       product.price >= currentFilters.minPrice && product.price <= currentFilters.maxPrice
@@ -191,7 +402,9 @@ function ProductsContent() {
         filteredProducts.sort((a, b) => (b.reviews_count || 0) - (a.reviews_count || 0))
         break
       default: // newest
+      case 'newest':
         filteredProducts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        break
     }
 
     // Apply pagination
@@ -223,6 +436,11 @@ function ProductsContent() {
   useEffect(() => {
     loadProducts()
   }, [loadProducts])
+
+  // Load game titles on mount
+  useEffect(() => {
+    loadGameTitles()
+  }, [loadGameTitles])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800">
@@ -268,9 +486,9 @@ function ProductsContent() {
                     size="sm"
                     onClick={() => updateFilters({
                       search: '',
-                      category: 'All Categories',
+                      gameTitle: '',
                       minPrice: 0,
-                      maxPrice: 10000,
+                      maxPrice: 50000000,
                       sortBy: 'newest'
                     })}
                     className="text-gray-400 hover:text-white"
@@ -279,16 +497,20 @@ function ProductsContent() {
                   </Button>
                 </div>
 
-                {/* Category Filter */}
+                {/* Game Title Filter */}
                 <div className="mb-6">
-                  <label className="block text-white font-medium mb-3">Category</label>
+                  <label className="block text-white font-medium mb-3">Game</label>
                   <select
-                    value={filters.category}
-                    onChange={(e) => updateFilters({ category: e.target.value })}
+                    value={filters.gameTitle}
+                    onChange={(e) => updateFilters({ gameTitle: e.target.value })}
                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-brand-red focus:outline-none"
+                    disabled={gameTitlesLoading}
                   >
-                    {CATEGORIES.map(category => (
-                      <option key={category} value={category}>{category}</option>
+                    <option value="">
+                      {gameTitlesLoading ? 'Loading games...' : 'All Games'}
+                    </option>
+                    {Array.isArray(gameTitles) && gameTitles.map(gameTitle => (
+                      <option key={gameTitle.id} value={gameTitle.id}>{gameTitle.name}</option>
                     ))}
                   </select>
                 </div>
@@ -306,8 +528,8 @@ function ProductsContent() {
                     <Input
                       type="number"
                       placeholder="Max"
-                      value={filters.maxPrice === 10000 ? '' : filters.maxPrice}
-                      onChange={(e) => updateFilters({ maxPrice: Number(e.target.value) || 10000 })}
+                      value={filters.maxPrice === 50000000 ? '' : filters.maxPrice}
+                      onChange={(e) => updateFilters({ maxPrice: Number(e.target.value) || 50000000 })}
                     />
                   </div>
                 </div>
@@ -369,18 +591,18 @@ function ProductsContent() {
                 {products.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
                     {products.map((product) => (
-                      <GameCard3D
+                      <ProductCard
                         key={product.id}
                         id={product.id}
                         title={product.title}
                         description={product.description}
                         price={product.price}
-                        category={product.category}
-                        image={product.image_url}
+                        category={product.type?.toUpperCase() || product.category || 'PRODUCT'}
+                        image={getValidImageUrl(product.images?.[0]?.url || product.image_url, product.title)}
                         rating={product.rating || 0}
                         reviews={product.reviews_count || 0}
                         seller={product.seller_username || 'Unknown Seller'}
-                        isNew={product.is_featured}
+                        isNew={product.featured || product.is_featured}
                         onClick={() => router.push(`/products/${product.id}`)}
                       />
                     ))}
@@ -390,7 +612,13 @@ function ProductsContent() {
                     <div className="text-6xl mb-4">🎮</div>
                     <h3 className="text-2xl font-semibold text-white mb-2">No products found</h3>
                     <p className="text-gray-400 mb-6">Try adjusting your search criteria or filters</p>
-                    <Button onClick={() => updateFilters({ search: '', category: 'All Categories' })}>
+                    <Button onClick={() => updateFilters({ 
+                      search: '', 
+                      gameTitle: '',
+                      minPrice: 0,
+                      maxPrice: 50000000,
+                      sortBy: 'newest'
+                    })}>
                       Clear Filters
                     </Button>
                   </div>

@@ -18,3 +18,10 @@ export { default as Avatar } from './Avatar'
 
 // Existing gaming components
 export { default as GameCard3D } from './game-card-3d'
+
+// Currency and pricing components
+export { default as CurrencySelector } from './CurrencySelector'
+export { default as PriceDisplay } from './PriceDisplay'
+
+// Product components
+export { default as ProductCard } from './ProductCard'

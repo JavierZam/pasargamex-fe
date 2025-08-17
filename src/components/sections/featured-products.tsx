@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { apiClient } from '@/lib/api'
+import { PriceDisplay } from '@/components/ui'
 
 interface Product {
   id: string
@@ -40,10 +41,10 @@ const PRODUCT_CATEGORIES = [
 
 const PRICE_RANGES = [
   { label: 'All Prices', min: 0, max: Infinity },
-  { label: 'Under $50', min: 0, max: 50 },
-  { label: '$50 - $150', min: 50, max: 150 },
-  { label: '$150 - $500', min: 150, max: 500 },
-  { label: 'Over $500', min: 500, max: Infinity }
+  { label: 'Under Rp 1M', min: 0, max: 1000000 },
+  { label: 'Rp 1M - 5M', min: 1000000, max: 5000000 },
+  { label: 'Rp 5M - 15M', min: 5000000, max: 15000000 },
+  { label: 'Over Rp 15M', min: 15000000, max: Infinity }
 ]
 
 export default function FeaturedProductsSection() {
@@ -102,12 +103,26 @@ export default function FeaturedProductsSection() {
   })
 
   const getProductImage = (product: Product) => {
-    if (product.images && product.images.length > 0 && product.images[0]) {
-      return product.images[0]
+    // Check for valid image URLs
+    const imageUrl = product.images?.[0] || (product as any).image_url || (product as any).images?.[0]?.url
+    
+    // Validate image URL
+    if (imageUrl && 
+        !imageUrl.includes('example.com') && 
+        !imageUrl.includes('.claude\\image.png') &&
+        !imageUrl.includes('.claude/image.png') &&
+        imageUrl.startsWith('http')) {
+      console.log('✅ Using valid image:', imageUrl)
+      return imageUrl
     }
+    
+    // Generate placeholder for invalid/missing images
     const randomColors = ['#DC2626', '#1D4ED8', '#059669', '#7C3AED', '#EA580C', '#0891B2']
     const color = randomColors[Math.floor(Math.random() * randomColors.length)]
-    return `/api/placeholder-image?text=${encodeURIComponent(product.game_title_name || product.title.slice(0, 10) || 'Product')}&width=300&height=200&bg=${encodeURIComponent(color)}`
+    const text = product.game_title_name || product.title.slice(0, 10) || 'Product'
+    const placeholderUrl = `/api/placeholder-image?text=${encodeURIComponent(text)}&width=300&height=200&bg=${encodeURIComponent(color)}`
+    console.log('🖼️ Using placeholder for:', product.title, '- Invalid URL:', imageUrl)
+    return placeholderUrl
   }
 
   return (
@@ -237,9 +252,11 @@ export default function FeaturedProductsSection() {
                   </p>
 
                   <div className="flex items-center justify-between mb-4">
-                    <div className="text-brand-red font-bold text-xl">
-                      ${product.price}
-                    </div>
+                    <PriceDisplay 
+                      basePrice={product.price} 
+                      size="lg" 
+                      className="text-brand-red" 
+                    />
                     <div className="text-gray-500 text-sm">
                       by @{product.seller_username}
                     </div>

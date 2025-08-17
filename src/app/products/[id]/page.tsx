@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Button, Card, CardContent, Badge, LoadingSpinner, Avatar } from '@/components/ui'
+import { Button, Card, CardContent, Badge, LoadingSpinner, Avatar, PriceDisplay } from '@/components/ui'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api'
 
@@ -150,9 +150,9 @@ export default function ProductDetailPage() {
     • Verified and secure transfer
     
     Perfect for serious gamers who want to skip the grind and start playing at the highest level immediately. Account comes with full documentation and transfer support.`,
-    price: 299.99,
+    price: 4750000,
     category: 'Game Accounts',
-    image_url: 'https://picsum.photos/600/400?random=0',
+    image_url: '/api/placeholder-image?text=Product&width=600&height=400&bg=%235A3E8A',
     seller_id: 'seller-123',
     seller_username: 'ProGameSeller',
     seller_rating: 4.8,
@@ -369,7 +369,11 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            <div className="text-4xl font-bold text-brand-red">${product.price}</div>
+            <PriceDisplay 
+              basePrice={product.price} 
+              size="xl" 
+              className="text-brand-red" 
+            />
 
             {/* Seller Info */}
             <Card className="bg-gray-800/50 border-gray-700">
@@ -428,7 +432,14 @@ export default function ProductDetailPage() {
 
               <div className="flex gap-4">
                 <Button onClick={handlePurchase} className="flex-1" size="lg">
-                  Buy Now - ${(product.price * quantity).toFixed(2)}
+                  <span className="flex items-center gap-2">
+                    Buy Now - 
+                    <PriceDisplay 
+                      basePrice={product.price * quantity} 
+                      size="sm" 
+                      className="text-inherit" 
+                    />
+                  </span>
                 </Button>
                 <Button variant="outline" onClick={handleAddToCart} size="lg">
                   Add to Cart
