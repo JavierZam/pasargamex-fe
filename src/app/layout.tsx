@@ -2,9 +2,12 @@ import type { Metadata } from 'next'
 import { Inter, Orbitron } from 'next/font/google'
 import './globals.css'
 import Header from '@/components/layout/header'
+import FloatingNav from '@/components/layout/FloatingNav'
 import Footer from '@/components/layout/footer'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { CurrencyProvider } from '@/contexts/CurrencyContext'
+import { NotificationProvider } from '@/contexts/NotificationContext'
+import NotificationContainer from '@/components/ui/NotificationContainer'
 
 const inter = Inter({ subsets: ['latin'] })
 const orbitron = Orbitron({ 
@@ -75,13 +78,17 @@ export default function RootLayout({
       <body className={`${inter.className} ${orbitron.variable} antialiased`}>
         <AuthProvider>
           <CurrencyProvider>
-            <div className="relative flex min-h-screen flex-col">
-              <Header />
-              <main className="flex-1">
-                {children}
-              </main>
-              <Footer />
-            </div>
+            <NotificationProvider>
+              <div className="relative flex min-h-screen flex-col">
+                <Header />
+                <main className="flex-1">
+                  {children}
+                </main>
+                <Footer />
+                <FloatingNav />
+              </div>
+              <NotificationContainer />
+            </NotificationProvider>
           </CurrencyProvider>
         </AuthProvider>
       </body>

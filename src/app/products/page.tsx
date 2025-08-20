@@ -4,6 +4,17 @@ import React, { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Button, Input, Card, CardContent, LoadingSpinner, PriceDisplay, ProductCard } from '@/components/ui'
 import { apiClient } from '@/lib/api'
+import AdvancedSearch from '@/components/sections/AdvancedSearch'
+
+interface SearchFilters {
+  query: string
+  game_title_id: string
+  type: string
+  status: string
+  min_price: number
+  max_price: number
+  sort: string
+}
 
 interface Product {
   id: string
@@ -432,6 +443,86 @@ function ProductsContent() {
     updateURL(updatedFilters)
   }
 
+  // Handle advanced search
+  const handleAdvancedSearch = async (searchFilters: SearchFilters) => {
+    setLoading(true)
+    try {
+      let response
+      
+      // If there's a search query, use search endpoint
+      if (searchFilters.query.trim()) {
+        response = await apiClient.searchProducts({
+          q: searchFilters.query,
+          game_title_id: searchFilters.game_title_id || undefined,
+          type: searchFilters.type || undefined,
+          status: searchFilters.status || 'active',
+          min_price: searchFilters.min_price || undefined,
+          max_price: searchFilters.max_price || undefined,
+          page: 1,
+          limit: filters.limit
+        })
+      } else {
+        // Otherwise use regular products endpoint with filters
+        response = await apiClient.getProducts({
+          game_title_id: searchFilters.game_title_id || undefined,
+          type: searchFilters.type || undefined,
+          status: searchFilters.status || 'active',
+          min_price: searchFilters.min_price || undefined,
+          max_price: searchFilters.max_price || undefined,
+          sort: searchFilters.sort || undefined,
+          page: 1,
+          limit: filters.limit
+        })
+      }
+
+      if (response.success && response.data) {
+        const data = response.data as any
+        let productsList: Product[] = Array.isArray(data) ? data : (data.items || [])
+
+        // Enhanced products with seller info
+        const sellerCache = new Map()
+        const enhancedProducts = await Promise.all(
+          productsList.map(async (product) => {
+            if (product.seller_username) {
+              return product
+            }
+            
+            if (product.seller_id) {
+              try {
+                if (sellerCache.has(product.seller_id)) {
+                  const cachedSeller = sellerCache.get(product.seller_id)
+                  return { ...product, seller_username: cachedSeller }
+                }
+                
+                const sellerResponse = await apiClient.getPublicSellerProfile(product.seller_id)
+                if (sellerResponse.success && sellerResponse.data) {
+                  const responseData = sellerResponse.data as any
+                  const sellerData = responseData.seller || responseData
+                  const username = sellerData.username || sellerData.display_name || `Seller ${product.seller_id.slice(-4)}`
+                  sellerCache.set(product.seller_id, username)
+                  return { ...product, seller_username: username }
+                }
+              } catch (error) {
+                const fallback = `Seller ${product.seller_id?.slice(-4) || 'Unknown'}`
+                return { ...product, seller_username: fallback }
+              }
+            }
+            return { ...product, seller_username: 'Unknown Seller' }
+          })
+        )
+
+        setProducts(enhancedProducts)
+        setTotalPages(data.totalPages || Math.ceil((data.total || enhancedProducts.length) / filters.limit))
+        setCurrentPage(1)
+      }
+    } catch (error) {
+      console.error('Search error:', error)
+      setProducts([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Load products when filters change
   useEffect(() => {
     loadProducts()
@@ -456,27 +547,26 @@ function ProductsContent() {
           </p>
         </div>
 
-        {/* Search Bar */}
-        <div className="mb-8">
-          <div className="max-w-2xl mx-auto">
-            <Input
-              type="text"
-              placeholder="Search for games, items, accounts..."
-              value={filters.search}
-              onChange={(e) => updateFilters({ search: e.target.value })}
-              className="w-full text-lg py-4"
-              icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              }
-            />
-          </div>
-        </div>
+        {/* Advanced Search */}
+        <AdvancedSearch 
+          onSearch={handleAdvancedSearch}
+          isLoading={loading}
+        />
 
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Filters Sidebar */}
-          <div className={`lg:w-1/4 ${showMobileFilters ? 'block' : 'hidden lg:block'}`}>
+          {/* Mobile Filters Toggle */}
+          <div className="lg:hidden">
+            <Button
+              variant="outline"
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className="w-full mb-4"
+            >
+              {showMobileFilters ? 'Hide' : 'Show'} Filters
+            </Button>
+          </div>
+
+          {/* Results Section */}
+          <div className="flex-1">
             <Card className="bg-gray-800/50 border-gray-700 backdrop-blur-sm">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -602,6 +692,7 @@ function ProductsContent() {
                         rating={product.rating || 0}
                         reviews={product.reviews_count || 0}
                         seller={product.seller_username || 'Unknown Seller'}
+                        seller_id={product.seller_id}
                         isNew={product.featured || product.is_featured}
                         onClick={() => router.push(`/products/${product.id}`)}
                       />

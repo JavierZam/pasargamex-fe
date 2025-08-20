@@ -190,8 +190,29 @@ class ApiClient {
   }
 
   // Product endpoints
+  async searchProducts(params: {
+    q: string
+    game_title_id?: string
+    type?: string
+    status?: string
+    min_price?: number
+    max_price?: number
+    page?: number
+    limit?: number
+  }) {
+    const searchParams = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) {
+        searchParams.append(key, value.toString())
+      }
+    })
+    
+    return this.request(`/v1/products/search?${searchParams.toString()}`)
+  }
+
   async getProducts(params?: {
     game_title_id?: string
+    type?: string
     page?: number
     limit?: number
     category?: string
@@ -200,6 +221,7 @@ class ApiClient {
     max_price?: number
     search?: string
     status?: string
+    sort?: string
     sort_by?: string
   }) {
     const searchParams = new URLSearchParams()
@@ -430,6 +452,147 @@ class ApiClient {
 
   async getPublicFile(fileId: string) {
     return `${this.baseURL}/v1/public/files/${fileId}`
+  }
+
+  // Wishlist endpoints
+  async addToWishlist(productId: string) {
+    return this.request(`/v1/wishlist/${productId}`, {
+      method: 'POST'
+    })
+  }
+
+  async removeFromWishlist(productId: string) {
+    return this.request(`/v1/wishlist/${productId}`, {
+      method: 'DELETE'
+    })
+  }
+
+  async getUserWishlist(params?: { page?: number; limit?: number }) {
+    const searchParams = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          searchParams.append(key, value.toString())
+        }
+      })
+    }
+    
+    const query = searchParams.toString()
+    return this.request(`/v1/wishlist${query ? `?${query}` : ''}`)
+  }
+
+  async checkWishlistStatus(productId: string) {
+    return this.request(`/v1/wishlist/${productId}/status`)
+  }
+
+  async getWishlistCount() {
+    return this.request('/v1/wishlist/count')
+  }
+
+  // Reviews & Ratings endpoints
+  async getReviews(params?: {
+    userId?: string
+    type?: 'seller_review' | 'buyer_review'
+    rating?: number
+    page?: number
+    limit?: number
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          searchParams.append(key, value.toString())
+        }
+      })
+    }
+    
+    const query = searchParams.toString()
+    return this.request(`/v1/reviews${query ? `?${query}` : ''}`)
+  }
+
+  async createReview(transactionId: string, data: {
+    rating: number
+    content: string
+    images?: File[]
+  }) {
+    const formData = new FormData()
+    formData.append('rating', data.rating.toString())
+    formData.append('content', data.content)
+    
+    if (data.images) {
+      data.images.forEach((image, index) => {
+        formData.append(`images`, image)
+      })
+    }
+
+    const url = `${this.baseURL}/v1/transactions/${transactionId}/review`
+    const headers: Record<string, string> = {}
+    
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: formData,
+      })
+
+      const data = await response.json()
+      return {
+        success: response.ok,
+        data: response.ok ? data : null,
+        error: response.ok ? null : data,
+        timestamp: new Date().toISOString()
+      }
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: { message: 'Network error', details: error },
+        timestamp: new Date().toISOString()
+      }
+    }
+  }
+
+  async reportReview(reviewId: string, data: {
+    reason: 'inappropriate' | 'spam' | 'fake' | 'offensive' | 'other'
+    description: string
+  }) {
+    return this.request(`/v1/reviews/${reviewId}/report`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  // Admin endpoints for reviews
+  async getReviewReports(params?: {
+    status?: 'pending' | 'resolved' | 'rejected'
+    page?: number
+    limit?: number
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          searchParams.append(key, value.toString())
+        }
+      })
+    }
+    
+    const query = searchParams.toString()
+    return this.request(`/v1/admin/reviews/reports${query ? `?${query}` : ''}`)
+  }
+
+  async updateReviewStatus(reviewId: string, data: {
+    status: 'active' | 'hidden' | 'deleted'
+    reason?: string
+  }) {
+    return this.request(`/v1/admin/reviews/${reviewId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
   }
 }
 

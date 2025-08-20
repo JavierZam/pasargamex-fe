@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth, useRole } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api'
-import { Badge, LoadingSpinner, Button, Card, CardContent } from '@/components/ui'
+import { Badge, LoadingSpinner, Button, Card, CardContent, PriceDisplay } from '@/components/ui'
 
 interface Transaction {
   id: string
@@ -33,6 +33,26 @@ interface DashboardStats {
   active_transactions: number
 }
 
+interface ActivityItem {
+  id: string
+  type: 'purchase' | 'sale' | 'wishlist' | 'review' | 'login'
+  title: string
+  description: string
+  timestamp: string
+  metadata?: {
+    product_title?: string
+    amount?: number
+    status?: string
+  }
+}
+
+interface MonthlyData {
+  month: string
+  spent: number
+  earned: number
+  transactions: number
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading } = useAuth()
@@ -41,6 +61,10 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'all' | 'buying' | 'selling'>('all')
+  const [analyticsTab, setAnalyticsTab] = useState<'overview' | 'activity' | 'analytics'>('overview')
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([])
+  const [favoriteCategories, setFavoriteCategories] = useState<{name: string, count: number, percentage: number}[]>([])
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -80,6 +104,10 @@ export default function DashboardPage() {
           total_earned: totalEarned,
           active_transactions: activeTransactions
         })
+
+        // Generate analytics data
+        generateAnalyticsData(transactionData)
+        generateRecentActivity(transactionData)
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error)
@@ -94,6 +122,104 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const generateAnalyticsData = (transactionData: Transaction[]) => {
+    // Generate monthly spending/earning data for the last 6 months
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const currentDate = new Date()
+    const monthlyStats: MonthlyData[] = []
+
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1)
+      const monthName = months[date.getMonth()]
+      
+      const monthTransactions = transactionData.filter(t => {
+        const transactionDate = new Date(t.created_at)
+        return transactionDate.getMonth() === date.getMonth() && 
+               transactionDate.getFullYear() === date.getFullYear()
+      })
+
+      const spent = monthTransactions
+        .filter(t => t.buyer?.username === user?.username)
+        .reduce((sum, t) => sum + t.total_amount, 0)
+      
+      const earned = monthTransactions
+        .filter(t => t.seller?.username === user?.username)
+        .reduce((sum, t) => sum + t.amount, 0)
+
+      monthlyStats.push({
+        month: monthName,
+        spent,
+        earned,
+        transactions: monthTransactions.length
+      })
+    }
+
+    setMonthlyData(monthlyStats)
+
+    // Generate favorite categories
+    const categoryCount = transactionData.reduce((acc: Record<string, number>, transaction) => {
+      const category = transaction.product?.type || 'other'
+      acc[category] = (acc[category] || 0) + 1
+      return acc
+    }, {})
+
+    const totalTransactions = transactionData.length
+    const categoriesWithPercentage = Object.entries(categoryCount)
+      .map(([name, count]) => ({
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        count,
+        percentage: totalTransactions > 0 ? Math.round((count / totalTransactions) * 100) : 0
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+
+    setFavoriteCategories(categoriesWithPercentage)
+  }
+
+  const generateRecentActivity = (transactionData: Transaction[]) => {
+    const activities: ActivityItem[] = []
+
+    // Add transaction activities
+    transactionData
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 10)
+      .forEach(transaction => {
+        const isBuying = transaction.buyer?.username === user?.username
+        activities.push({
+          id: `tx-${transaction.id}`,
+          type: isBuying ? 'purchase' : 'sale',
+          title: isBuying ? 'Purchase Completed' : 'Sale Completed',
+          description: transaction.product?.title || 'Unknown Product',
+          timestamp: transaction.created_at,
+          metadata: {
+            product_title: transaction.product?.title,
+            amount: transaction.total_amount,
+            status: transaction.status
+          }
+        })
+      })
+
+    // Add mock activities for better UX (in real app, this would come from actual activity logs)
+    const mockActivities: ActivityItem[] = [
+      {
+        id: 'activity-1',
+        type: 'login',
+        title: 'Account Login',
+        description: 'Logged in from new device',
+        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 'activity-2',
+        type: 'wishlist',
+        title: 'Added to Wishlist',
+        description: 'Genshin Impact Account - AR 55',
+        timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
+      }
+    ]
+
+    setRecentActivity([...activities, ...mockActivities].slice(0, 15))
   }
 
   const getStatusColor = (status: string) => {
@@ -130,6 +256,29 @@ export default function DashboardPage() {
     }
     return true // 'all'
   })
+
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'purchase': return '🛒'
+      case 'sale': return '💰'
+      case 'wishlist': return '❤️'
+      case 'review': return '⭐'
+      case 'login': return '🔐'
+      default: return '📝'
+    }
+  }
+
+  const formatRelativeTime = (timestamp: string) => {
+    const now = new Date()
+    const time = new Date(timestamp)
+    const diffInMinutes = Math.floor((now.getTime() - time.getTime()) / (1000 * 60))
+    
+    if (diffInMinutes < 1) return 'Just now'
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
+    if (diffInMinutes < 10080) return `${Math.floor(diffInMinutes / 1440)}d ago`
+    return time.toLocaleDateString()
+  }
 
   if (isLoading || loading) {
     return (
@@ -207,8 +356,142 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Analytics Tabs */}
+        <div className="mb-8">
+          <div className="flex bg-gray-700 rounded-lg p-1 max-w-md">
+            <button
+              onClick={() => setAnalyticsTab('overview')}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                analyticsTab === 'overview' ? 'bg-brand-red text-white' : 'text-gray-300 hover:text-white'
+              }`}
+            >
+              Overview
+            </button>
+            <button
+              onClick={() => setAnalyticsTab('activity')}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                analyticsTab === 'activity' ? 'bg-brand-red text-white' : 'text-gray-300 hover:text-white'
+              }`}
+            >
+              Activity
+            </button>
+            <button
+              onClick={() => setAnalyticsTab('analytics')}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                analyticsTab === 'analytics' ? 'bg-brand-red text-white' : 'text-gray-300 hover:text-white'
+              }`}
+            >
+              Analytics
+            </button>
+          </div>
+        </div>
+
+        {/* Analytics Content */}
+        {analyticsTab === 'activity' && (
+          <Card className="bg-gray-800/50 border-gray-700 mb-8">
+            <CardContent className="p-6">
+              <h2 className="text-2xl font-semibold text-white mb-6">Recent Activity</h2>
+              <div className="space-y-4 max-h-96 overflow-y-auto">
+                {recentActivity.length > 0 ? (
+                  recentActivity.map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-4 p-3 bg-gray-700/30 rounded-lg border border-gray-600">
+                      <div className="text-2xl">{getActivityIcon(activity.type)}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-white font-medium">{activity.title}</h4>
+                          <span className="text-xs text-gray-400">{formatRelativeTime(activity.timestamp)}</span>
+                        </div>
+                        <p className="text-gray-400 text-sm mt-1">{activity.description}</p>
+                        {activity.metadata?.amount && (
+                          <div className="mt-2">
+                            <PriceDisplay basePrice={activity.metadata.amount} size="sm" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-4xl mb-2">📝</div>
+                    <p className="text-gray-400">No recent activity</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {analyticsTab === 'analytics' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Monthly Trends */}
+            <Card className="bg-gray-800/50 border-gray-700">
+              <CardContent className="p-6">
+                <h3 className="text-xl font-semibold text-white mb-4">6-Month Trends</h3>
+                <div className="space-y-3">
+                  {monthlyData.map((month, index) => (
+                    <div key={month.month} className="bg-gray-700/50 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-white font-medium">{month.month}</span>
+                        <span className="text-gray-400 text-sm">{month.transactions} transactions</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        {month.spent > 0 && (
+                          <div>
+                            <span className="text-red-400">Spent: </span>
+                            <PriceDisplay basePrice={month.spent} size="sm" />
+                          </div>
+                        )}
+                        {month.earned > 0 && (
+                          <div>
+                            <span className="text-green-400">Earned: </span>
+                            <PriceDisplay basePrice={month.earned} size="sm" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Favorite Categories */}
+            <Card className="bg-gray-800/50 border-gray-700">
+              <CardContent className="p-6">
+                <h3 className="text-xl font-semibold text-white mb-4">Favorite Categories</h3>
+                <div className="space-y-3">
+                  {favoriteCategories.length > 0 ? (
+                    favoriteCategories.map((category) => (
+                      <div key={category.name} className="bg-gray-700/50 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-white font-medium">{category.name}</span>
+                          <span className="text-brand-blue font-bold">{category.percentage}%</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-400">{category.count} transactions</span>
+                          <div className="w-20 bg-gray-600 rounded-full h-2">
+                            <div 
+                              className="bg-gradient-to-r from-brand-red to-brand-blue h-2 rounded-full"
+                              style={{ width: `${category.percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-4xl mb-2">📊</div>
+                      <p className="text-gray-400">No category data available</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Transactions Section */}
-        <Card className="bg-gray-800/50 border-gray-700">
+        {analyticsTab === 'overview' && (
+          <Card className="bg-gray-800/50 border-gray-700">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-semibold text-white">Recent Transactions</h2>
@@ -324,6 +607,7 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* Quick Actions */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
-import { PriceDisplay } from '@/components/ui'
+import { PriceDisplay, StarRating } from '@/components/ui'
 import { Badge } from '@/components/ui'
+import WishlistButton from './WishlistButton'
 
 interface ProductCardProps {
   id: string
@@ -15,6 +16,7 @@ interface ProductCardProps {
   rating?: number
   reviews?: number
   seller?: string
+  seller_id?: string
   isNew?: boolean
   onClick?: () => void
 }
@@ -29,6 +31,7 @@ export default function ProductCard({
   rating = 0, 
   reviews = 0, 
   seller = 'Unknown Seller', 
+  seller_id,
   isNew = false, 
   onClick 
 }: ProductCardProps) {
@@ -125,6 +128,34 @@ export default function ProductCard({
               </div>
             </div>
           )}
+          
+          {/* Action Buttons */}
+          <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                const currentUrl = new URL(window.location.href)
+                const params = new URLSearchParams(currentUrl.search)
+                const existingProducts = params.get('products')?.split(',') || []
+                if (!existingProducts.includes(id)) {
+                  const newProducts = [...existingProducts, id].slice(0, 4) // Max 4 products
+                  window.open(`/compare?products=${newProducts.join(',')}`, '_blank')
+                }
+              }}
+              className="bg-black/70 backdrop-blur-sm rounded-full p-2 hover:bg-brand-blue/70 transition-colors shadow-lg"
+              title="Compare"
+            >
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 00-2-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </button>
+            <WishlistButton
+              productId={id}
+              variant="icon"
+              size="sm"
+              className="shadow-lg"
+            />
+          </div>
 
           {/* Badges */}
           <div className="absolute top-3 left-3 flex gap-2">
@@ -150,9 +181,7 @@ export default function ProductCard({
 
           {/* Rating & Reviews */}
           <div className="flex items-center gap-2 mb-3">
-            <div className="flex items-center gap-1">
-              {renderStars(rating)}
-            </div>
+            <StarRating rating={rating} size="sm" />
             <span className="text-gray-400 text-sm">({reviews})</span>
           </div>
 
@@ -161,8 +190,9 @@ export default function ProductCard({
             <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" 
                  onClick={(e) => {
                    e.stopPropagation();
-                   // TODO: Navigate to seller profile
-                   console.log('Navigate to seller profile:', seller);
+                   if (seller_id) {
+                     window.open(`/seller/${seller_id}`, '_blank');
+                   }
                  }}>
               <div className="w-6 h-6 bg-gradient-to-br from-brand-red to-brand-blue rounded-full flex items-center justify-center text-white text-xs font-bold">
                 {seller?.charAt(0)?.toUpperCase() || 'S'}
@@ -170,7 +200,7 @@ export default function ProductCard({
               <div className="flex flex-col">
                 <span className="text-sm text-white font-medium">@{seller}</span>
                 <div className="flex items-center gap-1">
-                  {renderStars(4.5)} {/* TODO: Get from seller rating */}
+                  <StarRating rating={4.5} size="sm" />
                   <span className="text-xs text-gray-400">(4.5)</span>
                 </div>
               </div>

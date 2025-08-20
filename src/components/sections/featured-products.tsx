@@ -16,6 +16,7 @@ interface Product {
   game_title_id: string
   game_title_name?: string
   seller_username: string
+  seller_id?: string
   status: string
   category: string
   created_at: string
@@ -69,7 +70,43 @@ export default function FeaturedProductsSection() {
       
       if (response.success && response.data) {
         const items = Array.isArray(response.data) ? response.data : (response.data as any).items || []
-        setProducts(items)
+        
+        // Enhance products with seller information
+        const sellerCache = new Map()
+        const enhancedProducts = await Promise.all(
+          items.map(async (product: any) => {
+            // If we already have seller_username, use it
+            if (product.seller_username) {
+              return product
+            }
+            
+            // If we have seller_id, try to fetch seller info
+            if (product.seller_id) {
+              try {
+                // Check cache first
+                if (sellerCache.has(product.seller_id)) {
+                  const cachedSeller = sellerCache.get(product.seller_id)
+                  return { ...product, seller_username: cachedSeller }
+                }
+                
+                const sellerResponse = await apiClient.getPublicSellerProfile(product.seller_id)
+                if (sellerResponse.success && sellerResponse.data) {
+                  const responseData = sellerResponse.data as any
+                  const sellerData = responseData.seller || responseData
+                  const username = sellerData.username || sellerData.display_name || `Seller ${product.seller_id.slice(-4)}`
+                  sellerCache.set(product.seller_id, username)
+                  return { ...product, seller_username: username }
+                }
+              } catch (error) {
+                const fallback = `Seller ${product.seller_id?.slice(-4) || 'Unknown'}`
+                return { ...product, seller_username: fallback }
+              }
+            }
+            return { ...product, seller_username: 'Unknown Seller' }
+          })
+        )
+        
+        setProducts(enhancedProducts)
       } else {
         // Mock data fallback
         setProducts(mockProducts)
@@ -106,8 +143,9 @@ export default function FeaturedProductsSection() {
     // Check for valid image URLs
     const imageUrl = product.images?.[0] || (product as any).image_url || (product as any).images?.[0]?.url
     
-    // Validate image URL
+    // Type check and validate image URL
     if (imageUrl && 
+        typeof imageUrl === 'string' &&
         !imageUrl.includes('example.com') && 
         !imageUrl.includes('.claude\\image.png') &&
         !imageUrl.includes('.claude/image.png') &&
@@ -121,7 +159,7 @@ export default function FeaturedProductsSection() {
     const color = randomColors[Math.floor(Math.random() * randomColors.length)]
     const text = product.game_title_name || product.title.slice(0, 10) || 'Product'
     const placeholderUrl = `/api/placeholder-image?text=${encodeURIComponent(text)}&width=300&height=200&bg=${encodeURIComponent(color)}`
-    console.log('🖼️ Using placeholder for:', product.title, '- Invalid URL:', imageUrl)
+    console.log('🖼️ Using placeholder for:', product.title, '- Invalid URL:', imageUrl, '- Type:', typeof imageUrl)
     return placeholderUrl
   }
 
@@ -257,7 +295,15 @@ export default function FeaturedProductsSection() {
                       size="lg" 
                       className="text-brand-red" 
                     />
-                    <div className="text-gray-500 text-sm">
+                    <div 
+                      className="text-gray-500 text-sm cursor-pointer hover:text-brand-blue transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (product.seller_id) {
+                          window.open(`/seller/${product.seller_id}`, '_blank');
+                        }
+                      }}
+                    >
                       by @{product.seller_username}
                     </div>
                   </div>

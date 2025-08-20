@@ -25,3 +25,13 @@ export { default as PriceDisplay } from './PriceDisplay'
 
 // Product components
 export { default as ProductCard } from './ProductCard'
+
+// Review and Rating components
+export { default as StarRating } from './StarRating'
+export { default as ReviewCard } from './ReviewCard'
+
+// Wishlist components
+export { default as WishlistButton } from './WishlistButton'
+
+// Search components
+export { default as LiveSearch } from './LiveSearch'

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Button, Card, CardContent, Badge, LoadingSpinner, Avatar, PriceDisplay } from '@/components/ui'
+import { Button, Card, CardContent, Badge, LoadingSpinner, Avatar, PriceDisplay, WishlistButton } from '@/components/ui'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api'
 
@@ -100,7 +100,7 @@ export default function ProductDetailPage() {
   const loadProduct = async (productId: string) => {
     setLoading(true)
     try {
-      const response = await apiClient.get(`/products/${productId}`)
+      const response = await apiClient.getProduct(productId)
       
       if (response.success && response.data) {
         setProduct(response.data as Product)
@@ -121,10 +121,11 @@ export default function ProductDetailPage() {
   const loadReviews = async (productId: string) => {
     setReviewsLoading(true)
     try {
-      const response = await apiClient.get(`/products/${productId}/reviews`)
+      const response = await apiClient.getProductReviews(productId)
       
       if (response.success && response.data) {
-        setReviews(response.data as Review[])
+        const reviewItems = Array.isArray(response.data) ? response.data : (response.data as any).items || []
+        setReviews(reviewItems as Review[])
       } else {
         // Fallback to mock reviews
         setReviews(generateMockReviews())
@@ -430,20 +431,29 @@ export default function ProductDetailPage() {
                 </span>
               </div>
 
-              <div className="flex gap-4">
-                <Button onClick={handlePurchase} className="flex-1" size="lg">
-                  <span className="flex items-center gap-2">
-                    Buy Now - 
-                    <PriceDisplay 
-                      basePrice={product.price * quantity} 
-                      size="sm" 
-                      className="text-inherit" 
-                    />
-                  </span>
-                </Button>
-                <Button variant="outline" onClick={handleAddToCart} size="lg">
-                  Add to Cart
-                </Button>
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <Button onClick={handlePurchase} className="flex-1" size="lg">
+                    <span className="flex items-center gap-2">
+                      Buy Now - 
+                      <PriceDisplay 
+                        basePrice={product.price * quantity} 
+                        size="sm" 
+                        className="text-inherit" 
+                      />
+                    </span>
+                  </Button>
+                  <Button variant="outline" onClick={handleAddToCart} size="lg">
+                    Add to Cart
+                  </Button>
+                </div>
+                
+                <WishlistButton 
+                  productId={product.id} 
+                  size="lg" 
+                  variant="button"
+                  className="w-full"
+                />
               </div>
             </div>
 

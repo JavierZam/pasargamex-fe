@@ -9,36 +9,16 @@ import GameCategoriesSection from '@/components/sections/game-categories'
 import SocialProofSection from '@/components/sections/social-proof'
 import TrustElementsSection from '@/components/sections/trust-elements'
 import FAQSection from '@/components/sections/faq'
-import UserProfileDropdown from '@/components/layout/UserProfileDropdown'
-import { CurrencySelector, PriceDisplay } from '@/components/ui'
+import QuickNavigationSection from '@/components/sections/QuickNavigation'
+import GamificationSection from '@/components/sections/GamificationSection'
+import { PriceDisplay } from '@/components/ui'
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
-      {/* Floating Sticky Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-gray-800 flex items-center justify-between p-6 lg:px-8">
-        <div className="flex items-center space-x-8">
-          <Link href="/products" className="text-gray-300 hover:text-white transition-colors">
-            Browse
-          </Link>
-          <Link href="/categories" className="text-gray-300 hover:text-white transition-colors">
-            Categories
-          </Link>
-          <Link href="/sell" className="text-gray-300 hover:text-white transition-colors">
-            Sell
-          </Link>
-          <Link href="/support" className="text-gray-300 hover:text-white transition-colors">
-            Support
-          </Link>
-        </div>
-        <div className="hidden md:flex items-center space-x-3">
-          <CurrencySelector />
-          <UserProfileDropdown />
-        </div>
-      </nav>
 
       {/* Hero Section with Product Showcase */}
-      <main className="relative pt-20">
+      <main className="relative">
         <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left: Content */}
@@ -236,6 +216,12 @@ export default function HomePage() {
           </div>
         </div>
       </main>
+
+      {/* Quick Navigation Section */}
+      <QuickNavigationSection />
+
+      {/* Gamification Section */}
+      <GamificationSection />
 
       {/* Top Games Section with 3D Cards */}
       <TopGamesSection />

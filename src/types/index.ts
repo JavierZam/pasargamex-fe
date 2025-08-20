@@ -137,3 +137,92 @@ export interface AuthResponse {
   token: string
   refresh_token: string
 }
+
+// Review & Rating Types
+export interface Review {
+  id: string
+  transactionId: string
+  productId: string
+  reviewerId: string
+  targetId: string
+  type: 'seller_review' | 'buyer_review'
+  rating: number
+  content: string
+  images?: string[]
+  status: 'active' | 'hidden' | 'reported' | 'deleted'
+  reportCount: number
+  createdAt: string
+  updatedAt: string
+  // Additional fields for display
+  reviewer?: {
+    id: string
+    username: string
+    avatar?: string
+  }
+  product?: {
+    id: string
+    title: string
+    image?: string
+  }
+}
+
+export interface ReviewReport {
+  id: string
+  reviewId: string
+  reporterId: string
+  reason: 'inappropriate' | 'spam' | 'fake' | 'offensive' | 'other'
+  description: string
+  status: 'pending' | 'resolved' | 'rejected'
+  createdAt: string
+  resolvedAt?: string
+}
+
+export interface SellerRating {
+  sellerId: string
+  totalReviews: number
+  averageRating: number
+  ratingBreakdown: {
+    1: number
+    2: number
+    3: number
+    4: number
+    5: number
+  }
+  lastUpdated: string
+}
+
+export interface CreateReviewRequest {
+  rating: number
+  content: string
+  images?: File[]
+}
+
+// Wishlist Types
+export interface WishlistItem {
+  id: string
+  user_id: string
+  product_id: string
+  product: {
+    id: string
+    title: string
+    description: string
+    price: number
+    type: string
+    images: ProductImage[]
+    status: string
+    seller_id: string
+    game_title_id: string
+    delivery_method: string
+    views: number
+    sold_count: number
+  }
+  created_at: string
+}
+
+export interface ReviewFilters {
+  userId?: string
+  type?: 'seller_review' | 'buyer_review'
+  rating?: number
+  page?: number
+  limit?: number
+}
