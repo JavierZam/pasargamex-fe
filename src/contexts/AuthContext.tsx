@@ -35,6 +35,7 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [isClient, setIsClient] = useState(false)
   const [state, setState] = useState<AuthState>({
     user: null,
     isLoading: true,
@@ -43,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize auth state from localStorage
   useEffect(() => {
+    setIsClient(true)
     let isMounted = true;
     
     const initAuth = () => {

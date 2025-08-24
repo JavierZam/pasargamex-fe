@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Achievement, SecretTrigger, GamificationStats } from '@/types/gamification'
 import { ACHIEVEMENTS, USER_TITLES } from '@/data/achievements'
 import { useGamificationAPI } from './useGamificationAPI'
+import { toast } from '@/components/ui/Toast'
 
 interface UseAchievementsReturn {
   achievements: Achievement[]
@@ -18,12 +19,71 @@ interface UseAchievementsReturn {
 }
 
 export function useAchievements(): UseAchievementsReturn {
-  const [achievements, setAchievements] = useState<Achievement[]>(ACHIEVEMENTS)
+  // Get current user ID from localStorage
+  const getUserId = () => {
+    if (typeof window === 'undefined') return null
+    
+    const userKeys = ['user', 'userId', 'user_id', 'uid']
+    
+    for (const key of userKeys) {
+      const value = localStorage.getItem(key)
+      if (value && value !== 'null' && value !== 'undefined') {
+        try {
+          const parsed = JSON.parse(value)
+          if (parsed.id || parsed.uid || parsed.userId) {
+            return parsed.id || parsed.uid || parsed.userId
+          } else if (typeof parsed === 'string') {
+            return parsed
+          }
+        } catch {
+          return value
+        }
+      }
+    }
+    return null
+  }
+
+  const [achievements, setAchievements] = useState<Achievement[]>(() => {
+    // Load achievements from localStorage on init
+    if (typeof window !== 'undefined') {
+      const userId = getUserId()
+      if (userId) {
+        const saved = localStorage.getItem(`pasargamex_achievements_${userId}`)
+        if (saved) {
+          try {
+            return JSON.parse(saved)
+          } catch (error) {
+            console.error('Error loading achievements:', error)
+          }
+        }
+      }
+    }
+    return ACHIEVEMENTS
+  })
   const [secretTriggers, setSecretTriggers] = useState<Map<string, SecretTrigger>>(new Map())
   const { queueEvent, status } = useGamificationAPI()
   
-  // Initialize secret triggers
+  // Initialize secret triggers with persistence
   useEffect(() => {
+    // Load from localStorage if available
+    let savedTriggers: Map<string, SecretTrigger> = new Map()
+    
+    if (typeof window !== 'undefined') {
+      const userId = getUserId()
+      if (userId) {
+        const saved = localStorage.getItem(`pasargamex_secret_triggers_${userId}`)
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved)
+            savedTriggers = new Map(Object.entries(parsed))
+          } catch (error) {
+            console.error('Error loading secret triggers:', error)
+          }
+        }
+      }
+    }
+    
+    // Default triggers
     const triggers = new Map<string, SecretTrigger>([
       ['chat_dashboard_switch', {
         id: 'chat_dashboard_switch',
@@ -64,6 +124,17 @@ export function useAchievements(): UseAchievementsReturn {
       }]
     ])
     
+    // Merge saved progress with default triggers
+    for (const [key, savedTrigger] of savedTriggers) {
+      if (triggers.has(key)) {
+        const defaultTrigger = triggers.get(key)!
+        triggers.set(key, {
+          ...defaultTrigger,
+          progress: savedTrigger.progress || 0
+        })
+      }
+    }
+    
     setSecretTriggers(triggers)
   }, [])
 
@@ -74,8 +145,6 @@ export function useAchievements(): UseAchievementsReturn {
     achievementsUnlocked: achievements.filter(a => a.unlocked).length,
     totalAchievements: achievements.length,
     secretsFound: achievements.filter(a => a.unlocked && a.isSecret).length,
-    level: Math.floor(achievements.filter(a => a.unlocked).reduce((sum, a) => sum + a.points, 0) / 1000) + 1,
-    nextLevelPoints: 1000,
     streak: {
       type: 'login',
       count: 1,
@@ -84,15 +153,31 @@ export function useAchievements(): UseAchievementsReturn {
   }
 
   const unlockAchievement = useCallback((achievementId: string) => {
-    setAchievements(prev => prev.map(achievement => 
-      achievement.id === achievementId 
-        ? { 
-            ...achievement, 
-            unlocked: true, 
-            unlockedAt: new Date() 
+    setAchievements(prev => {
+      const updated = prev.map(achievement => 
+        achievement.id === achievementId 
+          ? { 
+              ...achievement, 
+              unlocked: true, 
+              unlockedAt: new Date() 
+            }
+          : achievement
+      )
+      
+      // Save to localStorage
+      if (typeof window !== 'undefined') {
+        try {
+          const userId = getUserId()
+          if (userId) {
+            localStorage.setItem(`pasargamex_achievements_${userId}`, JSON.stringify(updated))
           }
-        : achievement
-    ))
+        } catch (error) {
+          console.error('Error saving achievements:', error)
+        }
+      }
+      
+      return updated
+    })
 
     // Show notification (you can integrate with your notification system)
     const achievement = achievements.find(a => a.id === achievementId)
@@ -103,6 +188,110 @@ export function useAchievements(): UseAchievementsReturn {
   }, [achievements])
 
   const trackSecretTrigger = useCallback((triggerId: string, increment: number = 1) => {
+    // Check if user is authenticated using the same getUserId function
+    const userId = getUserId()
+    
+    if (!userId) {
+      console.log('🔒 Achievement tracking requires login. Trigger:', triggerId)
+      console.log('🔍 Debug:', { 
+        allKeys: Object.keys(localStorage),
+        userId: userId
+      })
+      
+      // Show toast notification for logo clicks specifically
+      if (triggerId === 'logo_clicks') {
+        setTimeout(() => {
+          toast.warning(
+            'Achievement Locked',
+            '🔒 Login required to unlock "Logo Lover" achievement!'
+          )
+        }, 100)
+      }
+      return
+    }
+
+    console.log('✅ Tracking secret trigger:', triggerId, 'Count:', increment, 'User:', userId)
+
+    // Update progress and manage notifications
+    let shouldShowNotification = false
+    let achievementMessage = ''
+    
+    setSecretTriggers(prev => {
+      const newTriggers = new Map(prev)
+      const trigger = newTriggers.get(triggerId)
+      
+      if (trigger) {
+        const currentProgress = trigger.progress
+        const maxProgress = trigger.condition.count!
+        
+        // Prevent progress from exceeding max and ensure we don't duplicate progress
+        if (currentProgress >= maxProgress) {
+          console.log(`🔒 ${triggerId} already completed (${currentProgress}/${maxProgress})`)
+          return prev // Don't update if already completed
+        }
+        
+        const newProgress = Math.min(currentProgress + increment, maxProgress)
+        const wasIncomplete = currentProgress < maxProgress
+        const isNowComplete = newProgress >= maxProgress
+        
+        // Show notification on achievement unlock for different triggers
+        if (wasIncomplete && isNowComplete) {
+          shouldShowNotification = true
+          if (triggerId === 'logo_clicks') {
+            achievementMessage = 'ACHIEVEMENT UNLOCKED!\n🖱️ Logo Lover - You\'ve clicked the logo 25 times! Secret achievements are the best!'
+          } else if (triggerId === 'chat_dashboard_switch') {
+            achievementMessage = 'ACHIEVEMENT UNLOCKED!\n💬 No One Text You Yet - You switched between Chat and Dashboard 10 times!'
+          } else {
+            achievementMessage = `ACHIEVEMENT UNLOCKED!\n🎉 Achievement completed!`
+          }
+        }
+        
+        // Update the trigger with new progress
+        newTriggers.set(triggerId, {
+          ...trigger,
+          progress: newProgress
+        })
+        
+        // Unlock achievement if completed
+        if (isNowComplete) {
+          setTimeout(() => unlockAchievement(trigger.achievementId), 500)
+        }
+        
+        console.log(`🎯 ${triggerId} progress: ${newProgress}/${maxProgress}`)
+      }
+      
+      return newTriggers
+    })
+    
+    // Persist to localStorage after state update
+    setTimeout(() => {
+      if (typeof window !== 'undefined') {
+        try {
+          const userId = getUserId()
+          if (userId) {
+            setSecretTriggers(current => {
+              const obj = Object.fromEntries(current)
+              localStorage.setItem(`pasargamex_secret_triggers_${userId}`, JSON.stringify(obj))
+              return current
+            })
+          }
+        } catch (error) {
+          console.error('Error saving secret triggers:', error)
+        }
+      }
+    }, 100)
+    
+    // Show toast notification after state update
+    if (shouldShowNotification && achievementMessage) {
+      setTimeout(() => {
+        const lines = achievementMessage.split('\n')
+        toast.achievement(
+          lines[0], // Title
+          lines[1] || 'Achievement completed!' // Message
+        )
+      }, 100)
+    }
+
     // Send event to backend API
     queueEvent({
       type: 'secret_trigger',
@@ -112,27 +301,6 @@ export function useAchievements(): UseAchievementsReturn {
         sessionId: sessionStorage.getItem('sessionId') || Date.now().toString(),
         page: window.location.pathname
       }
-    })
-
-    setSecretTriggers(prev => {
-      const newTriggers = new Map(prev)
-      const trigger = newTriggers.get(triggerId)
-      
-      if (trigger) {
-        const newProgress = trigger.progress + increment
-        newTriggers.set(triggerId, {
-          ...trigger,
-          progress: newProgress
-        })
-
-        // Check if trigger condition is met
-        if (trigger.condition.count && newProgress >= trigger.condition.count) {
-          // Unlock the associated achievement
-          setTimeout(() => unlockAchievement(trigger.achievementId), 500)
-        }
-      }
-      
-      return newTriggers
     })
   }, [unlockAchievement, queueEvent])
 

@@ -8,6 +8,7 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { CurrencyProvider } from '@/contexts/CurrencyContext'
 import { NotificationProvider } from '@/contexts/NotificationContext'
 import NotificationContainer from '@/components/ui/NotificationContainer'
+import { ToastContainer } from '@/components/ui/Toast'
 
 const inter = Inter({ subsets: ['latin'] })
 const orbitron = Orbitron({ 
@@ -88,6 +89,7 @@ export default function RootLayout({
                 <FloatingNav />
               </div>
               <NotificationContainer />
+              <ToastContainer />
             </NotificationProvider>
           </CurrencyProvider>
         </AuthProvider>

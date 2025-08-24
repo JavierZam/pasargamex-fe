@@ -38,8 +38,6 @@ export interface GamificationStats {
   achievementsUnlocked: number
   totalAchievements: number
   secretsFound: number
-  level: number
-  nextLevelPoints: number
   streak: {
     type: 'login' | 'trading'
     count: number

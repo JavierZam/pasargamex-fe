@@ -55,9 +55,10 @@ export default function FloatingNav() {
       const prev = previousPathname.current
       const current = pathname
       
-      // Check for chat <-> dashboard switching
-      if ((prev === '/messages' && current === '/dashboard') || 
-          (prev === '/dashboard' && current === '/messages')) {
+      // Check for chat <-> dashboard switching (dashboard is root '/')
+      if ((prev === '/messages' && current === '/') || 
+          (prev === '/' && current === '/messages')) {
+        console.log(`🔄 Navigation detected: ${prev} → ${current}`)
         trackSecretTrigger('chat_dashboard_switch')
       }
     }

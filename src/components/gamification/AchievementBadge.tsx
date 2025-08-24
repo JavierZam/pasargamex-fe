@@ -2,6 +2,7 @@
 
 import { Achievement } from '@/types/gamification'
 import { ACHIEVEMENT_RARITIES } from '@/data/achievements'
+import GameIcon from '@/components/ui/GameIcon'
 import { useState } from 'react'
 
 interface AchievementBadgeProps {
@@ -37,29 +38,16 @@ export default function AchievementBadge({
       onMouseLeave={() => setIsHovered(false)}
       onClick={onClick}
     >
-      {/* Achievement Badge */}
-      <div className={`
-        ${sizeClasses[size]} 
-        rounded-2xl border-2 flex items-center justify-center cursor-pointer
-        transition-all duration-300 transform
-        ${isUnlocked 
-          ? `${rarity.bg} ${rarity.border} ${animated ? 'hover:scale-110 hover:rotate-3' : ''} shadow-lg ${rarity.glow}` 
-          : 'bg-gray-800/50 border-gray-700/50 grayscale opacity-60'
-        }
-        ${animated && isUnlocked ? 'animate-pulse hover:animate-none' : ''}
-      `}>
-        <span className={`
-          ${isUnlocked ? rarity.color : 'text-gray-600'}
-          ${animated && isUnlocked && achievement.rarity === 'mythic' ? 'animate-bounce' : ''}
-        `}>
-          {isUnlocked ? achievement.icon : '🔒'}
-        </span>
-        
-        {/* Mythic Aura Effect */}
-        {isUnlocked && achievement.rarity === 'mythic' && animated && (
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-500/30 to-cyan-500/30 animate-ping"></div>
-        )}
-      </div>
+      {/* Achievement Badge - Using GameIcon */}
+      <GameIcon 
+        icon={achievement.icon}
+        title={achievement.title}
+        rarity={achievement.rarity}
+        size={size}
+        unlocked={isUnlocked}
+        animated={animated}
+        className="cursor-pointer"
+      />
 
       {/* New Achievement Notification */}
       {isUnlocked && achievement.unlockedAt && 

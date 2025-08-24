@@ -75,13 +75,57 @@ export function useGamificationAPI(): UseGamificationAPIReturn {
   const [error, setError] = useState<string | null>(null)
   const [eventQueue, setEventQueue] = useState<GamificationEventRequest[]>([])
 
-  // Get auth token (you'll need to implement this based on your auth system)
+  // Get auth headers - requires authentication
   const getAuthHeaders = useCallback(() => {
-    const token = localStorage.getItem('authToken') // Adjust based on your auth implementation
+    // Check multiple possible token key names
+    const authKeys = ['auth_token', 'authToken', 'token', 'accessToken', 'firebaseToken']
+    const userKeys = ['user', 'userId', 'user_id', 'uid']
+    
+    let token = null
+    let userId = null
+    
+    // Find token
+    for (const key of authKeys) {
+      const value = localStorage.getItem(key)
+      if (value && value !== 'null' && value !== 'undefined') {
+        token = value
+        console.log('🔑 Found auth token key:', key)
+        break
+      }
+    }
+    
+    // Find user ID - could be stored as JSON or plain string
+    for (const key of userKeys) {
+      const value = localStorage.getItem(key)
+      if (value && value !== 'null' && value !== 'undefined') {
+        try {
+          // Try parsing as JSON first (for 'user' key)
+          const parsed = JSON.parse(value)
+          if (parsed.id || parsed.uid || parsed.userId) {
+            userId = parsed.id || parsed.uid || parsed.userId
+          } else if (typeof parsed === 'string') {
+            userId = parsed
+          }
+        } catch {
+          // If not JSON, use as plain string
+          userId = value
+        }
+        console.log('👤 Found user key:', key, 'Extracted userId:', userId)
+        break
+      }
+    }
+    
+    // Gamification requires authentication
+    if (!token || !userId) {
+      console.error('🔒 Authentication missing:', { token: !!token, userId: !!userId })
+      throw new Error('Authentication required for gamification features')
+    }
+    
     return {
       'Content-Type': 'application/json',
-      'Authorization': token ? `Bearer ${token}` : '',
-      'X-User-ID': localStorage.getItem('userId') || '', // Adjust based on your auth implementation
+      'Authorization': `Bearer ${token}`,
+      'X-User-ID': userId,
+      'X-User-Type': 'authenticated'
     }
   }, [])
 

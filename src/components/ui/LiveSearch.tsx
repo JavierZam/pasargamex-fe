@@ -38,11 +38,18 @@ export default function LiveSearch({
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
-  // Load recent and popular searches on mount
+  // Load recent and popular searches on mount - with hydration safety
   useEffect(() => {
-    const recent = localStorage.getItem('pasargamex_recent_searches')
-    if (recent) {
-      setRecentSearches(JSON.parse(recent).slice(0, 5))
+    if (typeof window !== 'undefined') {
+      const recent = localStorage.getItem('pasargamex_recent_searches')
+      if (recent) {
+        try {
+          setRecentSearches(JSON.parse(recent).slice(0, 5))
+        } catch (error) {
+          console.error('Error parsing recent searches:', error)
+          localStorage.removeItem('pasargamex_recent_searches')
+        }
+      }
     }
     
     // Mock popular searches - in real app this would come from API
@@ -233,12 +240,18 @@ export default function LiveSearch({
     router.push(`/search?q=${encodeURIComponent(searchQuery)}`)
   }
 
-  // Save to recent searches
+  // Save to recent searches - with client-side check
   const saveToRecentSearches = (searchTerm: string) => {
-    const recent = JSON.parse(localStorage.getItem('pasargamex_recent_searches') || '[]')
-    const updated = [searchTerm, ...recent.filter((item: string) => item !== searchTerm)].slice(0, 10)
-    localStorage.setItem('pasargamex_recent_searches', JSON.stringify(updated))
-    setRecentSearches(updated.slice(0, 5))
+    if (typeof window === 'undefined') return
+    
+    try {
+      const recent = JSON.parse(localStorage.getItem('pasargamex_recent_searches') || '[]')
+      const updated = [searchTerm, ...recent.filter((item: string) => item !== searchTerm)].slice(0, 10)
+      localStorage.setItem('pasargamex_recent_searches', JSON.stringify(updated))
+      setRecentSearches(updated.slice(0, 5))
+    } catch (error) {
+      console.error('Error saving recent searches:', error)
+    }
   }
 
   // Handle click outside

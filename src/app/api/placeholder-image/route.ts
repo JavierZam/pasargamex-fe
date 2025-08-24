@@ -24,10 +24,14 @@ export async function GET(request: NextRequest) {
       <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" fill="${textColor}" font-family="Arial, sans-serif" font-size="${Math.min(width, height) / 8}" font-weight="bold">${text}</text>
     </svg>`
 
+    // Convert SVG to proper data URL format for img tags
     return new NextResponse(svg, {
+      status: 200,
       headers: {
-        'Content-Type': 'image/svg+xml',
+        'Content-Type': 'image/svg+xml; charset=utf-8',
         'Cache-Control': 'public, max-age=3600',
+        'Access-Control-Allow-Origin': '*',
+        'Content-Length': Buffer.byteLength(svg, 'utf8').toString(),
       },
     })
   } catch (error) {
@@ -40,8 +44,10 @@ export async function GET(request: NextRequest) {
     </svg>`
     
     return new NextResponse(fallbackSvg, {
+      status: 200,
       headers: {
-        'Content-Type': 'image/svg+xml',
+        'Content-Type': 'image/svg+xml; charset=utf-8',
+        'Content-Length': Buffer.byteLength(fallbackSvg, 'utf8').toString(),
       },
     })
   }
