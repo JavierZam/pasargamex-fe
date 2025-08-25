@@ -40,6 +40,14 @@ const nextConfig = {
   env: {
     CUSTOM_KEY: 'my-value',
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/gamification/:path*',
+        destination: 'http://localhost:8080/api/gamification/:path*',
+      },
+    ]
+  },
 }
 
 module.exports = nextConfig

@@ -16,6 +16,7 @@ interface UseAchievementsReturn {
   getUnlockedAchievements: () => Achievement[]
   getLockedAchievements: () => Achievement[]
   getSecretAchievements: () => Achievement[]
+  addTestEXP: (points: number) => void
 }
 
 export function useAchievements(): UseAchievementsReturn {
@@ -61,9 +62,40 @@ export function useAchievements(): UseAchievementsReturn {
     return ACHIEVEMENTS
   })
   const [secretTriggers, setSecretTriggers] = useState<Map<string, SecretTrigger>>(new Map())
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const { queueEvent, status } = useGamificationAPI()
   
-  // Initialize secret triggers with persistence
+  // Reset achievements and triggers when user changes
+  useEffect(() => {
+    const userId = getUserId()
+    
+    if (userId !== currentUserId) {
+      console.log(`🔄 User changed: ${currentUserId} → ${userId}`)
+      setCurrentUserId(userId)
+      
+      // Reset and reload achievements for new user
+      if (userId) {
+        const saved = localStorage.getItem(`pasargamex_achievements_${userId}`)
+        if (saved) {
+          try {
+            const userAchievements = JSON.parse(saved)
+            setAchievements(userAchievements)
+          } catch (error) {
+            console.error('Error loading achievements for user:', error)
+            setAchievements(ACHIEVEMENTS)
+          }
+        } else {
+          // New user - start with default achievements
+          setAchievements(ACHIEVEMENTS)
+        }
+      } else {
+        // No user - reset to defaults
+        setAchievements(ACHIEVEMENTS)
+      }
+    }
+  }, [currentUserId]) // Run when currentUserId changes or on mount
+  
+  // Initialize secret triggers with persistence and reset on user change
   useEffect(() => {
     // Load from localStorage if available
     let savedTriggers: Map<string, SecretTrigger> = new Map()
@@ -136,12 +168,31 @@ export function useAchievements(): UseAchievementsReturn {
     }
     
     setSecretTriggers(triggers)
-  }, [])
+  }, [currentUserId]) // Reset triggers when user changes
 
-  // Calculate stats
+  // Calculate stats with dynamic title based on EXP
+  const totalPoints = achievements.filter(a => a.unlocked).reduce((sum, a) => sum + a.points, 0)
+  
+  // Find current title based on EXP earned
+  const getCurrentTitle = () => {
+    // Sort titles by EXP requirement (descending) to find highest eligible title
+    const sortedTitles = [...USER_TITLES].sort((a, b) => b.requirement.value - a.requirement.value)
+    
+    for (const title of sortedTitles) {
+      if (totalPoints >= title.requirement.value) {
+        return { ...title, isUnlocked: true }
+      }
+    }
+    
+    return { ...USER_TITLES[0], isUnlocked: true } // Default to Human
+  }
+  
+  const currentTitle = getCurrentTitle()
+  
   const stats: GamificationStats = {
-    totalPoints: achievements.filter(a => a.unlocked).reduce((sum, a) => sum + a.points, 0),
-    currentTitle: USER_TITLES.find(t => t.isUnlocked) || USER_TITLES[0],
+    totalPoints,
+    currentTitle,
+    level: currentTitle.level,
     achievementsUnlocked: achievements.filter(a => a.unlocked).length,
     totalAchievements: achievements.length,
     secretsFound: achievements.filter(a => a.unlocked && a.isSecret).length,
@@ -198,15 +249,6 @@ export function useAchievements(): UseAchievementsReturn {
         userId: userId
       })
       
-      // Show toast notification for logo clicks specifically
-      if (triggerId === 'logo_clicks') {
-        setTimeout(() => {
-          toast.warning(
-            'Achievement Locked',
-            '🔒 Login required to unlock "Logo Lover" achievement!'
-          )
-        }, 100)
-      }
       return
     }
 
@@ -330,6 +372,59 @@ export function useAchievements(): UseAchievementsReturn {
   const getSecretAchievements = useCallback(() => {
     return achievements.filter(a => a.isSecret)
   }, [achievements])
+  
+  // Testing function to instantly add EXP
+  const addTestEXP = useCallback((points: number) => {
+    if (process.env.NODE_ENV !== 'development') {
+      console.warn('addTestEXP only available in development mode')
+      return
+    }
+    
+    // Create fake achievement for testing
+    const testAchievement = {
+      id: `test_exp_${Date.now()}`,
+      title: 'Test EXP Boost',
+      description: `Testing EXP boost of ${points} points`,
+      icon: '⚡',
+      category: 'testing',
+      rarity: 'common',
+      points: points,
+      requirement: 'Testing purpose only',
+      unlocked: true,
+      isSecret: false
+    } as Achievement
+    
+    setAchievements(prev => {
+      const updated = [
+        ...prev.filter(a => !a.id.startsWith('test_exp_')), // Remove old test achievements
+        testAchievement
+      ]
+      
+      // Save to localStorage immediately
+      if (typeof window !== 'undefined') {
+        const userId = getUserId()
+        if (userId) {
+          try {
+            localStorage.setItem(`pasargamex_achievements_${userId}`, JSON.stringify(updated))
+          } catch (error) {
+            console.error('Error saving test achievements:', error)
+          }
+        }
+      }
+      
+      return updated
+    })
+    
+    console.log(`🧪 Test: Added ${points} EXP for testing purposes`)
+  }, [])
+  
+  // Expose to global for console testing
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+      ;(window as any).addTestEXP = addTestEXP
+      console.log('🧪 Development mode: Use addTestEXP(points) in console for testing')
+    }
+  }, [addTestEXP])
 
   // Check time-based achievements periodically
   useEffect(() => {
@@ -371,6 +466,7 @@ export function useAchievements(): UseAchievementsReturn {
     checkSecretAchievements,
     getUnlockedAchievements,
     getLockedAchievements,
-    getSecretAchievements
+    getSecretAchievements,
+    addTestEXP
   }
 }

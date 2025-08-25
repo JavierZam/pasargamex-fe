@@ -257,7 +257,7 @@ export default function GamificationDashboard({ className = '', compact = false 
                     </div>
                     <p className="text-sm text-gray-400">{title.description}</p>
                     <div className="text-xs text-gray-500 mt-1">
-                      Requirement: {title.requirement.value.toLocaleString()} IDR in sales
+                      Requirement: {title.requirement.value.toLocaleString()} EXP
                     </div>
                   </div>
                   

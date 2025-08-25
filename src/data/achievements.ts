@@ -60,7 +60,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     icon: '🖱️',
     category: 'secret',
     rarity: 'rare',
-    points: 100,
+    points: 150, // Same as other rare achievements
     requirement: 'Click floating button 50 times',
     unlocked: false,
     isSecret: true,
@@ -73,7 +73,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     icon: '🌙',
     category: 'secret',
     rarity: 'epic',
-    points: 200,
+    points: 300, // Same as other epic achievements
     requirement: 'Browse products at 3:33 AM',
     unlocked: false,
     isSecret: true,
@@ -99,7 +99,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     icon: '❤️',
     category: 'secret',
     rarity: 'rare',
-    points: 75,
+    points: 150, // Same as other rare achievements
     requirement: 'Click logo 25 times',
     unlocked: false,
     isSecret: true,
@@ -112,7 +112,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     icon: '🔍',
     category: 'secret',
     rarity: 'epic',
-    points: 250,
+    points: 300, // Same as other epic achievements
     requirement: 'Search 100 times with no results',
     unlocked: false,
     isSecret: true,
@@ -179,7 +179,7 @@ export const USER_TITLES: UserTitle[] = [
     description: 'A new member of the PasargameX community',
     icon: '👤',
     level: 1,
-    requirement: { type: 'sales', value: 0 },
+    requirement: { type: 'exp', value: 0 },
     color: 'text-gray-400',
     gradient: 'from-gray-500 to-gray-600',
     isUnlocked: true
@@ -190,7 +190,7 @@ export const USER_TITLES: UserTitle[] = [
     description: 'Rising above mortal limitations',
     icon: '⚡',
     level: 2,
-    requirement: { type: 'sales', value: 10000000 }, // 10 million IDR
+    requirement: { type: 'exp', value: 500 }, // Achievable with 5-10 achievements
     color: 'text-yellow-400',
     gradient: 'from-yellow-400 to-orange-500',
     isUnlocked: false
@@ -201,7 +201,7 @@ export const USER_TITLES: UserTitle[] = [
     description: 'Master of the gaming realm',
     icon: '🔥',
     level: 3,
-    requirement: { type: 'sales', value: 50000000 }, // 50 million IDR
+    requirement: { type: 'exp', value: 1200 }, // Mix of achievements and some sales
     color: 'text-orange-400',
     gradient: 'from-orange-500 to-red-500',
     isUnlocked: false
@@ -212,7 +212,7 @@ export const USER_TITLES: UserTitle[] = [
     description: 'Ruler of all gaming domains',
     icon: '👑',
     level: 4,
-    requirement: { type: 'sales', value: 100000000 }, // 100 million IDR
+    requirement: { type: 'exp', value: 2500 }, // Requires dedication but achievable
     color: 'text-purple-400',
     gradient: 'from-purple-500 to-indigo-600',
     isUnlocked: false
@@ -223,7 +223,7 @@ export const USER_TITLES: UserTitle[] = [
     description: 'The ultimate gaming marketplace legend',
     icon: '✨',
     level: 5,
-    requirement: { type: 'sales', value: 500000000 }, // 500 million IDR
+    requirement: { type: 'exp', value: 5000 }, // Ultimate goal but fair
     color: 'text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400',
     gradient: 'from-pink-400 via-purple-400 to-cyan-400',
     isUnlocked: false

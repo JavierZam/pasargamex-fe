@@ -140,16 +140,18 @@ export default function GamificationSectionClient() {
 
                 {/* Quick Stats */}
                 <div className="grid grid-cols-3 gap-4 mt-6">
-                  <div className="text-center p-4 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                    <div className="text-2xl font-bold text-blue-400">{stats.currentTitle.name}</div>
+                  <div className="text-center p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                    <div className="text-lg font-bold text-blue-400 truncate" title={stats.currentTitle.name}>
+                      {stats.currentTitle.name}
+                    </div>
                     <div className="text-xs text-gray-400">Current Title</div>
                   </div>
-                  <div className="text-center p-4 bg-yellow-500/10 rounded-xl border border-yellow-500/20">
-                    <div className="text-2xl font-bold text-yellow-400">{stats.totalPoints}</div>
+                  <div className="text-center p-3 bg-yellow-500/10 rounded-xl border border-yellow-500/20">
+                    <div className="text-lg font-bold text-yellow-400">{stats.totalPoints}</div>
                     <div className="text-xs text-gray-400">Total Points</div>
                   </div>
-                  <div className="text-center p-4 bg-purple-500/10 rounded-xl border border-purple-500/20">
-                    <div className="text-2xl font-bold text-purple-400">{stats.secretsFound}</div>
+                  <div className="text-center p-3 bg-purple-500/10 rounded-xl border border-purple-500/20">
+                    <div className="text-lg font-bold text-purple-400">{stats.secretsFound}</div>
                     <div className="text-xs text-gray-400">Secrets Found</div>
                   </div>
                 </div>

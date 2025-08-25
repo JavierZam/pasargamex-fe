@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { calculateTitle, formatSales, TITLE_REQUIREMENTS } from '@/utils/levelSystem'
+import { UserTitle } from '@/types/gamification'
 
 interface TitleProgressDisplayProps {
-  totalSales: number
+  currentTitle: UserTitle
+  currentPoints: number
+  nextTitle?: UserTitle
   size?: 'sm' | 'md' | 'lg'
   showDetails?: boolean
   animated?: boolean
@@ -12,39 +14,40 @@ interface TitleProgressDisplayProps {
 }
 
 export default function TitleProgressDisplay({ 
-  totalSales, 
+  currentTitle,
+  currentPoints,
+  nextTitle,
   size = 'md', 
   showDetails = true, 
   animated = true,
   className = '' 
 }: TitleProgressDisplayProps) {
-  const [displaySales, setDisplaySales] = useState(totalSales)
-  const titleInfo = calculateTitle(displaySales)
+  const [displayPoints, setDisplayPoints] = useState(currentPoints)
 
-  // Animate sales changes
+  // Animate points changes
   useEffect(() => {
-    if (!animated || Math.abs(totalSales - displaySales) < 1000) {
-      setDisplaySales(totalSales)
+    if (!animated || Math.abs(currentPoints - displayPoints) < 10) {
+      setDisplayPoints(currentPoints)
       return
     }
 
     const duration = 1000 // 1 second
     const steps = 30
-    const increment = (totalSales - displaySales) / steps
+    const increment = (currentPoints - displayPoints) / steps
     let step = 0
 
     const timer = setInterval(() => {
       step++
       if (step >= steps) {
-        setDisplaySales(totalSales)
+        setDisplayPoints(currentPoints)
         clearInterval(timer)
       } else {
-        setDisplaySales(prev => prev + increment)
+        setDisplayPoints(prev => prev + increment)
       }
     }, duration / steps)
 
     return () => clearInterval(timer)
-  }, [totalSales, displaySales, animated])
+  }, [currentPoints, displayPoints, animated])
 
   const sizeClasses = {
     sm: {
@@ -72,26 +75,11 @@ export default function TitleProgressDisplay({
 
   const styles = sizeClasses[size]
 
-  // Get title styling
-  const getTitleStyling = (titleId: string) => {
-    switch (titleId) {
-      case 'human':
-        return 'from-gray-400 to-gray-500'
-      case 'demi_god':
-        return 'from-yellow-400 to-orange-500'
-      case 'god':
-        return 'from-orange-500 to-red-500'
-      case 'all_father':
-        return 'from-purple-500 to-indigo-600'
-      case 'one_above_all':
-        return 'from-pink-400 via-purple-400 to-cyan-400'
-      default:
-        return 'from-gray-400 to-gray-500'
-    }
-  }
-
-  const currentGradient = getTitleStyling(titleInfo.currentTitle.id)
-  const nextGradient = titleInfo.nextTitle ? getTitleStyling(titleInfo.nextTitle.id) : currentGradient
+  const currentGradient = currentTitle.gradient
+  const nextGradient = nextTitle ? nextTitle.gradient : currentGradient
+  
+  const progress = nextTitle ? Math.min((currentPoints / nextTitle.requirement.value) * 100, 100) : 100
+  const pointsToNext = nextTitle ? Math.max(nextTitle.requirement.value - currentPoints, 0) : 0
 
   return (
     <div className={`
@@ -107,13 +95,13 @@ export default function TitleProgressDisplay({
             bg-gradient-to-r ${currentGradient}
             ${animated ? 'animate-pulse' : ''}
           `}>
-            {titleInfo.currentTitle.name}
+            {currentTitle.name}
           </div>
           
           {showDetails && (
             <div>
               <div className={`${styles.sales} text-gray-400`}>
-                {formatSales(Math.floor(displaySales))} in sales
+                {Math.floor(displayPoints)} EXP
               </div>
             </div>
           )}
@@ -121,23 +109,19 @@ export default function TitleProgressDisplay({
 
         {/* Title Icon */}
         <div className="text-3xl">
-          {titleInfo.currentTitle.id === 'human' && '👤'}
-          {titleInfo.currentTitle.id === 'demi_god' && '⚡'}
-          {titleInfo.currentTitle.id === 'god' && '🔥'}
-          {titleInfo.currentTitle.id === 'all_father' && '👑'}
-          {titleInfo.currentTitle.id === 'one_above_all' && '✨'}
+          {currentTitle.icon}
         </div>
       </div>
 
       {/* Progress to Next Title */}
-      {titleInfo.nextTitle && showDetails && (
+      {nextTitle && showDetails && (
         <div className="mb-3">
           <div className="flex items-center justify-between mb-2">
             <span className={`${styles.sales} text-gray-400`}>
-              Progress to {titleInfo.nextTitle.name}
+              Progress to {nextTitle.name}
             </span>
             <span className={`${styles.sales} text-gray-300`}>
-              {formatSales(titleInfo.salesToNext)} to go
+              {pointsToNext.toLocaleString()} EXP to go
             </span>
           </div>
           
@@ -151,7 +135,7 @@ export default function TitleProgressDisplay({
                 relative overflow-hidden
                 ${animated ? 'animate-pulse' : ''}
               `}
-              style={{ width: `${titleInfo.progress}%` }}
+              style={{ width: `${progress}%` }}
             >
               {/* Shimmer effect */}
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 animate-shimmer"></div>
@@ -160,49 +144,32 @@ export default function TitleProgressDisplay({
           
           <div className="flex justify-between mt-1">
             <span className="text-xs text-gray-500">
-              {Math.floor(titleInfo.progress)}% complete
+              {Math.floor(progress)}% complete
             </span>
             <span className={`text-xs text-transparent bg-clip-text bg-gradient-to-r ${nextGradient}`}>
-              Next: {titleInfo.nextTitle.name}
+              Next: {nextTitle.name}
             </span>
-          </div>
-        </div>
-      )}
-
-      {/* Current Title Unlocks */}
-      {showDetails && titleInfo.currentTitle.unlocks.length > 0 && (
-        <div className="mt-3">
-          <div className="text-xs text-gray-400 mb-1">Current Perks:</div>
-          <div className="flex flex-wrap gap-1">
-            {titleInfo.currentTitle.unlocks.map((unlock, index) => (
-              <span 
-                key={index}
-                className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full border border-green-500/30"
-              >
-                ✓ {unlock}
-              </span>
-            ))}
           </div>
         </div>
       )}
 
       {/* Next Title Preview */}
-      {showDetails && titleInfo.nextTitle && size !== 'sm' && (
+      {showDetails && nextTitle && size !== 'sm' && (
         <div className={`mt-3 p-2 rounded-xl border bg-gradient-to-r ${nextGradient} bg-opacity-10 border-opacity-20`}>
           <div className={`text-xs font-medium text-transparent bg-clip-text bg-gradient-to-r ${nextGradient}`}>
-            🎯 Next Title: {titleInfo.nextTitle.name}
+            🎯 Next Title: {nextTitle.name}
           </div>
           <div className="text-xs text-gray-300">
-            Requirement: {formatSales(titleInfo.nextTitle.salesRequired)} in sales
+            Requirement: {nextTitle.requirement.value.toLocaleString()} EXP
           </div>
           <div className="text-xs text-gray-400">
-            Unlocks: {titleInfo.nextTitle.unlocks.join(', ')}
+            {nextTitle.description}
           </div>
         </div>
       )}
 
       {/* Max Title Achieved */}
-      {!titleInfo.nextTitle && titleInfo.currentTitle.id === 'one_above_all' && (
+      {!nextTitle && currentTitle.id === 'one_above_all' && (
         <div className="mt-3 p-3 bg-gradient-to-r from-pink-500/20 to-cyan-500/20 rounded-xl border border-pink-500/30">
           <div className="text-center">
             <div className="text-2xl mb-1">🏆</div>
