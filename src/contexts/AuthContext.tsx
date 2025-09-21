@@ -166,6 +166,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
         
+        // Ensure consistent UID for Firebase compatibility
+        if (!user.uid) {
+          user.uid = user.id || user.user_id
+        }
+        
+        console.log('🔍 Regular Login - User data after processing:', {
+          id: user.id,
+          uid: user.uid,
+          email: user.email,
+          username: user.username
+        })
+        
         // Store auth data
         localStorage.setItem('auth_token', token)
         localStorage.setItem('user', JSON.stringify(user))

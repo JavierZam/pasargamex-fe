@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAchievements } from '@/hooks/useAchievements'
@@ -18,28 +18,161 @@ export default function FloatingNav() {
   const [isOpen, setIsOpen] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
+  const [currentAnimation, setCurrentAnimation] = useState('animate-mascot-float')
+  const [currentMessage, setCurrentMessage] = useState('Need help? 💫')
+  const [isIdle, setIsIdle] = useState(false)
+  const [lastInteraction, setLastInteraction] = useState(Date.now())
   const pathname = usePathname()
   const router = useRouter()
   const { trackSecretTrigger } = useAchievements()
   const previousPathname = useRef(pathname)
+  const idleTimeoutRef = useRef<NodeJS.Timeout>()
+  const animationTimeoutRef = useRef<NodeJS.Timeout>()
+  const messageTimeoutRef = useRef<NodeJS.Timeout>()
+
+  // Arrays for dynamic content
+  const idleAnimations = [
+    'animate-mascot-float',
+    'animate-mascot-wiggle',
+    'animate-mascot-blink',
+    'animate-mascot-wave',
+    'animate-mascot-sleepy'
+  ]
+
+  const dynamicMessages = [
+    'Need help? 💫',
+    'Hey there! 👋',
+    'Ready to game? 🎮',
+    'Looking for deals? 💎',
+    "I'm here to help! ✨",
+    'Explore with me! 🗺️',
+    'Find your game! 🎯',
+    'Level up today! ⭐'
+  ]
+
+  const excitedMessages = [
+    "Let's go! 🚀",
+    'Amazing choice! 🌟',
+    'You rock! 💪',
+    'So exciting! 🎉',
+    'Adventure time! ⚡'
+  ]
+
+  // Reset interaction timer
+  const resetInteractionTimer = useCallback(() => {
+    setLastInteraction(Date.now())
+    setIsIdle(false)
+
+    if (idleTimeoutRef.current) {
+      clearTimeout(idleTimeoutRef.current)
+    }
+
+    // Set idle state after 60 seconds of no interaction (longer)
+    idleTimeoutRef.current = setTimeout(() => {
+      setIsIdle(true)
+    }, 60000)
+  }, [])
+
+  // Random animation cycler
+  const cycleAnimation = useCallback(() => {
+    if (!isOpen && isIdle) {
+      const randomAnimation = idleAnimations[Math.floor(Math.random() * idleAnimations.length)]
+      setCurrentAnimation(randomAnimation)
+
+      // Change animation every 8-12 seconds when idle (slower)
+      const nextCycle = 8000 + Math.random() * 4000
+      animationTimeoutRef.current = setTimeout(cycleAnimation, nextCycle)
+    } else if (!isOpen) {
+      setCurrentAnimation('animate-mascot-float')
+    }
+  }, [isOpen, isIdle, idleAnimations])
+
+  // Dynamic message changer
+  const cycleMessage = useCallback(() => {
+    if (!isOpen) {
+      const messages = isIdle ? dynamicMessages : dynamicMessages.slice(0, 4)
+      const randomMessage = messages[Math.floor(Math.random() * messages.length)]
+      setCurrentMessage(randomMessage)
+
+      // Change message every 20-30 seconds (very slow)
+      const nextCycle = 20000 + Math.random() * 10000
+      messageTimeoutRef.current = setTimeout(cycleMessage, nextCycle)
+    }
+  }, [isOpen, isIdle, dynamicMessages])
 
   const handleFloatingButtonClick = () => {
     setIsOpen(!isOpen)
     trackSecretTrigger('floating_button_clicks')
+    resetInteractionTimer()
+
+    // Show excited message when opening
+    if (!isOpen) {
+      const randomExcited = excitedMessages[Math.floor(Math.random() * excitedMessages.length)]
+      setCurrentMessage(randomExcited)
+      setCurrentAnimation('animate-mascot-excited')
+    } else {
+      setCurrentAnimation('animate-mascot-float')
+      cycleMessage()
+    }
   }
 
-  // Auto-hide on scroll
+  // Initialize timers and interactions
+  useEffect(() => {
+    resetInteractionTimer()
+    cycleMessage()
+
+    // Track user interactions to reset idle timer
+    const handleUserActivity = () => {
+      resetInteractionTimer()
+    }
+
+    const events = ['mousedown', 'keypress', 'click', 'touchstart']
+    events.forEach(event => {
+      document.addEventListener(event, handleUserActivity, { passive: true })
+    })
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, handleUserActivity)
+      })
+      if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current)
+      if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current)
+      if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current)
+    }
+  }, [resetInteractionTimer, cycleMessage])
+
+  // Start animation cycling when idle
+  useEffect(() => {
+    if (isIdle && !isOpen) {
+      cycleAnimation()
+    } else {
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current)
+      }
+      if (!isOpen) {
+        setCurrentAnimation('animate-mascot-float')
+      }
+    }
+
+    return () => {
+      if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current)
+    }
+  }, [isIdle, isOpen, cycleAnimation])
+
+  // Auto-hide on scroll (separate from mascot interactions)
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY
-      
+
       if (currentScrollY > lastScrollY && currentScrollY > 100) {
         setIsVisible(false) // Scrolling down
       } else {
         setIsVisible(true) // Scrolling up
       }
-      
+
       setLastScrollY(currentScrollY)
+      // NOTE: Deliberately NOT calling resetInteractionTimer() here
+      // so scrolling doesn't affect mascot message timing
     }
 
     window.addEventListener('scroll', handleScroll, { passive: true })
@@ -151,34 +284,72 @@ export default function FloatingNav() {
 
   return (
     <>
-      {/* Floating Action Button */}
-      <div 
+      {/* Floating Action Button - Anime Mascot Assistant */}
+      <div
         className={`fixed bottom-8 right-8 z-40 transition-all duration-500 ${
           isVisible ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'
         }`}
       >
         <button
           onClick={handleFloatingButtonClick}
-          className={`group relative w-14 h-14 rounded-2xl bg-gradient-to-r from-brand-red to-brand-blue shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center ${
-            isOpen ? 'rotate-45 scale-110 shadow-2xl shadow-brand-red/30' : 'hover:scale-110'
+          className={`group relative w-32 h-40 bg-transparent hover:shadow-2xl transition-all duration-300 flex items-center justify-center overflow-visible ${
+            isOpen ? 'scale-110' : 'hover:scale-105'
           }`}
         >
-          <svg 
-            className={`w-6 h-6 text-white transition-transform duration-300 ${isOpen ? 'rotate-45' : ''}`} 
-            fill="none" 
-            stroke="currentColor" 
+          {/* Anime Mascot Assistant */}
+          <img
+            src="/mascot-assistant.png"
+            alt="PasargameX Assistant Mascot"
+            className={`w-full h-full object-contain drop-shadow-lg transition-all duration-500 ${currentAnimation} ${
+              isOpen
+                ? 'scale-110 rotate-12'
+                : 'hover:scale-105 hover:rotate-6 hover:drop-shadow-2xl'
+            } ${isIdle ? 'animate-mascot-blink' : ''}`}
+            onError={(e) => {
+              // Fallback jika gambar gagal load
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              target.nextElementSibling?.classList.remove('hidden');
+            }}
+          />
+
+          {/* Fallback SVG icon jika gambar gagal load */}
+          <svg
+            className={`w-8 h-8 text-brand-red transition-transform duration-300 hidden ${isOpen ? 'rotate-45' : ''}`}
+            fill="none"
+            stroke="currentColor"
             viewBox="0 0 24 24"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
-          
-          {/* Pulsing Ring */}
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-brand-red to-brand-blue opacity-30 animate-ping"></div>
+
+          {/* Magical Sparkle Effect */}
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-ping opacity-75"></div>
+          <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-pink-400 rounded-full animate-bounce delay-100 opacity-60"></div>
+
+          {/* Floating Hearts Animation */}
+          <div className="absolute inset-0 pointer-events-none">
+            <span className="absolute top-0 left-1/2 transform -translate-x-1/2 text-pink-300 text-xs animate-float opacity-70">💖</span>
+            <span className="absolute top-2 right-0 text-yellow-300 text-xs animate-float-delay opacity-60">✨</span>
+            <span className="absolute bottom-2 left-0 text-blue-300 text-xs animate-float-delay-2 opacity-50">⭐</span>
+          </div>
         </button>
 
-        {/* Quick Access Badge */}
-        <div className="absolute -top-2 -left-2 bg-yellow-500 text-black text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center animate-bounce">
-          ✨
+        {/* Assistant Status Badge */}
+        <div className="absolute -top-2 -left-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white text-xs font-bold rounded-2xl px-2 py-1 animate-pulse shadow-lg">
+          Assistant
+        </div>
+
+        {/* Dynamic Speech Bubble */}
+        <div className={`absolute -top-8 left-1/2 transform -translate-x-1/2 transition-all duration-300 ${
+          isOpen ? 'opacity-0 scale-0' : 'opacity-100 scale-100'
+        }`}>
+          <div className={`bg-white text-gray-800 text-xs px-3 py-1 rounded-full shadow-lg whitespace-nowrap transition-all duration-500 ${
+            isIdle ? 'animate-bounce bg-gradient-to-r from-yellow-100 to-pink-100' : 'animate-pulse'
+          }`}>
+            {currentMessage}
+          </div>
+          <div className="w-2 h-2 bg-white transform rotate-45 mx-auto -mt-1"></div>
         </div>
       </div>
 

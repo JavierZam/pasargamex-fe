@@ -35,3 +35,6 @@ export { default as WishlistButton } from './WishlistButton'
 
 // Search components
 export { default as LiveSearch } from './LiveSearch'
+
+// Toast and notification components
+export { ToastContainer, toast, toastManager } from './Toast'

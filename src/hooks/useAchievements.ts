@@ -63,7 +63,13 @@ export function useAchievements(): UseAchievementsReturn {
   })
   const [secretTriggers, setSecretTriggers] = useState<Map<string, SecretTrigger>>(new Map())
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const { queueEvent, status } = useGamificationAPI()
+  const { 
+    queueEvent, 
+    status: apiStatus, 
+    fetchStatus: refetchApiStatus, 
+    unlockAchievement: apiUnlockAchievement,
+    loading: apiLoading
+  } = useGamificationAPI()
   
   // Reset achievements and triggers when user changes
   useEffect(() => {
@@ -75,19 +81,47 @@ export function useAchievements(): UseAchievementsReturn {
       
       // Reset and reload achievements for new user
       if (userId) {
-        const saved = localStorage.getItem(`pasargamex_achievements_${userId}`)
-        if (saved) {
+        // Try to sync from API first, fallback to localStorage
+        const syncFromAPI = async () => {
           try {
-            const userAchievements = JSON.parse(saved)
-            setAchievements(userAchievements)
+            await refetchApiStatus()
+            if (apiStatus?.achievements) {
+              // Convert API format to local format
+              const apiAchievements = ACHIEVEMENTS.map(baseAch => {
+                const apiAch = apiStatus.achievements.find(a => a.achievement.id === baseAch.id)
+                return {
+                  ...baseAch,
+                  unlocked: apiAch?.unlocked || false,
+                  unlockedAt: apiAch?.unlockedAt ? new Date(apiAch.unlockedAt) : undefined
+                }
+              })
+              setAchievements(apiAchievements)
+              console.log('✅ Synced achievements from API')
+              return
+            }
           } catch (error) {
-            console.error('Error loading achievements for user:', error)
-            setAchievements(ACHIEVEMENTS)
+            console.warn('⚠️ Failed to sync from API, using localStorage fallback:', error)
           }
-        } else {
-          // New user - start with default achievements
-          setAchievements(ACHIEVEMENTS)
+          
+          // Fallback to localStorage
+          const saved = localStorage.getItem(`pasargamex_achievements_${userId}`)
+          if (saved) {
+            try {
+              const userAchievements = JSON.parse(saved)
+              setAchievements(userAchievements)
+              console.log('📦 Loaded achievements from localStorage')
+            } catch (error) {
+              console.error('Error loading achievements for user:', error)
+              setAchievements(ACHIEVEMENTS)
+            }
+          } else {
+            // New user - start with default achievements
+            setAchievements(ACHIEVEMENTS)
+            console.log('🆕 New user - starting with default achievements')
+          }
         }
+        
+        syncFromAPI()
       } else {
         // No user - reset to defaults
         setAchievements(ACHIEVEMENTS)
@@ -203,7 +237,15 @@ export function useAchievements(): UseAchievementsReturn {
     }
   }
 
-  const unlockAchievement = useCallback((achievementId: string) => {
+  const unlockAchievement = useCallback(async (achievementId: string) => {
+    // First sync with API
+    try {
+      await apiUnlockAchievement(achievementId)
+      console.log(`🌐 Achievement unlocked on server: ${achievementId}`)
+    } catch (error) {
+      console.warn(`⚠️ Failed to unlock achievement on server, continuing locally: ${error}`)
+    }
+    
     setAchievements(prev => {
       const updated = prev.map(achievement => 
         achievement.id === achievementId 
@@ -215,7 +257,7 @@ export function useAchievements(): UseAchievementsReturn {
           : achievement
       )
       
-      // Save to localStorage
+      // Save to localStorage as backup
       if (typeof window !== 'undefined') {
         try {
           const userId = getUserId()
@@ -233,10 +275,10 @@ export function useAchievements(): UseAchievementsReturn {
     // Show notification (you can integrate with your notification system)
     const achievement = achievements.find(a => a.id === achievementId)
     if (achievement) {
-      console.log(`🎉 Achievement Unlocked: ${achievement.title}`)
+      console.log(`🏆 Achievement Unlocked: ${achievement.title}`)
       // Trigger celebration animation or notification
     }
-  }, [achievements])
+  }, [achievements, apiUnlockAchievement])
 
   const trackSecretTrigger = useCallback((triggerId: string, increment: number = 1) => {
     // Check if user is authenticated using the same getUserId function
@@ -296,7 +338,13 @@ export function useAchievements(): UseAchievementsReturn {
         
         // Unlock achievement if completed
         if (isNowComplete) {
-          setTimeout(() => unlockAchievement(trigger.achievementId), 500)
+          setTimeout(async () => {
+            try {
+              await unlockAchievement(trigger.achievementId)
+            } catch (error) {
+              console.error('Failed to unlock achievement:', error)
+            }
+          }, 500)
         }
         
         console.log(`🎯 ${triggerId} progress: ${newProgress}/${maxProgress}`)
@@ -334,12 +382,14 @@ export function useAchievements(): UseAchievementsReturn {
       }, 100)
     }
 
-    // Send event to backend API
+    // Send event to backend API for tracking
     queueEvent({
       type: 'secret_trigger',
       triggerId,
       count: increment,
       data: {
+        progress: secretTriggers.get(triggerId)?.progress || 0,
+        userId: getUserId(),
         sessionId: sessionStorage.getItem('sessionId') || Date.now().toString(),
         page: window.location.pathname
       }

@@ -135,6 +135,89 @@ export function useGamificationAPI(): UseGamificationAPIReturn {
       setLoading(true)
       setError(null)
 
+      // Check if in development mode and return mock data if needed
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🎮 Development mode: Using mock gamification data')
+        
+        // Mock gamification data for development
+        const mockData: GamificationStatusResponse = {
+          user: {
+            userId: 'dev-user',
+            totalPoints: 1250,
+            currentLevel: 3,
+            currentTitleId: 'trader',
+            totalSales: 5,
+            totalPurchases: 12,
+            streaks: {
+              loginDays: 7,
+              lastLoginDate: new Date().toISOString(),
+              tradingDays: 3,
+              lastTradingDate: new Date().toISOString(),
+            },
+            secretTriggers: {
+              logo_clicks: 10,
+              konami_code: 1
+            },
+            statistics: {
+              totalTransactions: 17,
+              successfulSales: 5,
+              positiveReviews: 8,
+              helpedUsers: 3,
+              productViews: 145,
+              searchQueries: 23
+            }
+          },
+          currentTitle: {
+            id: 'trader',
+            name: 'Trader',
+            description: 'Active marketplace participant',
+            tier: 'bronze',
+            minPoints: 1000,
+            maxPoints: 2499,
+            color: '#CD7F32'
+          },
+          nextTitle: {
+            id: 'merchant', 
+            name: 'Merchant',
+            description: 'Experienced marketplace trader',
+            tier: 'silver',
+            minPoints: 2500,
+            maxPoints: 4999,
+            color: '#C0C0C0'
+          },
+          achievements: [
+            {
+              achievement: {
+                id: 'first_login',
+                name: 'First Steps',
+                description: 'Welcome to PasargameX!',
+                tier: 'bronze',
+                pointsReward: 50,
+                category: 'engagement'
+              },
+              unlocked: true,
+              unlockedAt: new Date().toISOString()
+            }
+          ],
+          newAchievements: [],
+          stats: {
+            totalAchievements: 1,
+            totalPossibleAchievements: 25,
+            completionPercentage: 4,
+            recentActivity: [],
+            levelProgress: {
+              current: 1250,
+              required: 2500,
+              percentage: 50
+            }
+          }
+        }
+        
+        setStatus(mockData)
+        setLoading(false)
+        return
+      }
+
       const response = await fetch('/api/gamification/status', {
         method: 'GET',
         headers: getAuthHeaders(),

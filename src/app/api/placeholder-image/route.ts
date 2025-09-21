@@ -12,26 +12,23 @@ export async function GET(request: NextRequest) {
     const textColor = url.searchParams.get('color') || '#ffffff'
 
     // Create proper SVG placeholder
-    const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">
+    const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#DC2626;stop-opacity:0.8" />
-          <stop offset="100%" style="stop-color:#1E3A8A;stop-opacity:0.8" />
+          <stop offset="0%" style="stop-color:#DC2626;stop-opacity:0.3" />
+          <stop offset="100%" style="stop-color:#1E3A8A;stop-opacity:0.3" />
         </linearGradient>
       </defs>
-      <rect width="100%" height="100%" fill="${bgColor}"/>
-      <rect width="100%" height="100%" fill="url(#grad1)" opacity="0.3"/>
-      <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" fill="${textColor}" font-family="Arial, sans-serif" font-size="${Math.min(width, height) / 8}" font-weight="bold">${text}</text>
+      <rect width="100%" height="100%" fill="${bgColor.startsWith('#') ? bgColor : `#${bgColor}`}"/>
+      <rect width="100%" height="100%" fill="url(#grad1)"/>
+      <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" fill="${textColor}" font-family="system-ui, -apple-system, sans-serif" font-size="${Math.min(width, height) / 8}" font-weight="bold">${text}</text>
     </svg>`
 
-    // Convert SVG to proper data URL format for img tags
     return new NextResponse(svg, {
       status: 200,
       headers: {
-        'Content-Type': 'image/svg+xml; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600',
-        'Access-Control-Allow-Origin': '*',
-        'Content-Length': Buffer.byteLength(svg, 'utf8').toString(),
+        'Content-Type': 'image/svg+xml',
+        'Cache-Control': 'public, max-age=86400, immutable',
       },
     })
   } catch (error) {

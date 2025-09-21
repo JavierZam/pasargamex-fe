@@ -7,8 +7,11 @@ import Footer from '@/components/layout/footer'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { CurrencyProvider } from '@/contexts/CurrencyContext'
 import { NotificationProvider } from '@/contexts/NotificationContext'
+import { WebSocketProvider } from '@/contexts/WebSocketContext'
+import { ChatProvider } from '@/contexts/ChatContext'
 import NotificationContainer from '@/components/ui/NotificationContainer'
 import { ToastContainer } from '@/components/ui/Toast'
+import ConditionalLayout from '@/components/layout/ConditionalLayout'
 
 const inter = Inter({ subsets: ['latin'] })
 const orbitron = Orbitron({ 
@@ -80,16 +83,15 @@ export default function RootLayout({
         <AuthProvider>
           <CurrencyProvider>
             <NotificationProvider>
-              <div className="relative flex min-h-screen flex-col">
-                <Header />
-                <main className="flex-1">
-                  {children}
-                </main>
-                <Footer />
-                <FloatingNav />
-              </div>
-              <NotificationContainer />
-              <ToastContainer />
+              <WebSocketProvider>
+                <ChatProvider>
+                  <ConditionalLayout>
+                    {children}
+                  </ConditionalLayout>
+                  <NotificationContainer />
+                  <ToastContainer />
+                </ChatProvider>
+              </WebSocketProvider>
             </NotificationProvider>
           </CurrencyProvider>
         </AuthProvider>

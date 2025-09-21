@@ -224,8 +224,8 @@ export const USER_TITLES: UserTitle[] = [
     icon: '✨',
     level: 5,
     requirement: { type: 'exp', value: 5000 }, // Ultimate goal but fair
-    color: 'text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400',
-    gradient: 'from-pink-400 via-purple-400 to-cyan-400',
+    color: 'text-transparent bg-clip-text bg-gradient-to-r from-pink-300 via-purple-300 to-cyan-300',
+    gradient: 'from-pink-300 via-purple-300 to-cyan-300',
     isUnlocked: false
   }
 ]

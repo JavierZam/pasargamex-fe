@@ -44,7 +44,7 @@ const nextConfig = {
     return [
       {
         source: '/api/gamification/:path*',
-        destination: 'http://localhost:8080/api/gamification/:path*',
+        destination: 'https://pasargamex-api-is3vukc7iq-et.a.run.app/api/gamification/:path*',
       },
     ]
   },

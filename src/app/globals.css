@@ -87,6 +87,24 @@
   box-shadow: 0 0 30px rgba(220, 38, 38, 0.5);
 }
 
+.gaming-glow-white {
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+  transition: box-shadow 0.3s ease;
+}
+
+.gaming-glow-white:hover {
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.4);
+}
+
+.gaming-text-glow {
+  text-shadow: 0 0 10px rgba(30, 58, 138, 0.5);
+  transition: text-shadow 0.3s ease;
+}
+
+.gaming-text-glow:hover {
+  text-shadow: 0 0 15px rgba(59, 130, 246, 0.8);
+}
+
 .gaming-border {
   border: 2px solid transparent;
   background: linear-gradient(45deg, #DC2626, #1E3A8A) border-box;
@@ -266,4 +284,220 @@
 .game-card-3d:hover .card-glare {
   opacity: var(--glare-opacity, 1);
   transition: opacity 0.1s;
+}
+
+/* Custom Gaming Scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(220, 38, 38, 0.6) rgba(17, 24, 39, 0.3);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: linear-gradient(to bottom, rgba(17, 24, 39, 0.2), rgba(31, 41, 55, 0.3));
+  border-radius: 4px;
+  margin: 4px 0;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, rgba(220, 38, 38, 0.7), rgba(147, 51, 234, 0.7), rgba(59, 130, 246, 0.7));
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.4);
+  transition: all 0.3s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, rgba(220, 38, 38, 0.9), rgba(147, 51, 234, 0.9), rgba(59, 130, 246, 0.9));
+  box-shadow: 0 0 12px rgba(220, 38, 38, 0.6);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(to bottom, rgba(220, 38, 38, 1), rgba(147, 51, 234, 1), rgba(59, 130, 246, 1));
+  box-shadow: 0 0 16px rgba(220, 38, 38, 0.8);
+}
+
+/* Anime Mascot Assistant Animations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(-8px) rotate(5deg);
+    opacity: 1;
+  }
+}
+
+@keyframes float-delay {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(-6px) rotate(-3deg);
+    opacity: 0.9;
+  }
+}
+
+@keyframes float-delay-2 {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-10px) rotate(8deg);
+    opacity: 0.8;
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-float-delay {
+  animation: float-delay 2.5s ease-in-out infinite 0.5s;
+}
+
+.animate-float-delay-2 {
+  animation: float-delay-2 3.5s ease-in-out infinite 1s;
+}
+
+/* Enhanced Mascot Animations for More Liveliness */
+@keyframes mascot-float {
+  0%, 100% {
+    transform: translateY(0px) scale(1) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-4px) scale(1.02) rotate(1deg);
+  }
+  50% {
+    transform: translateY(-8px) scale(1.05) rotate(-1deg);
+  }
+  75% {
+    transform: translateY(-4px) scale(1.02) rotate(2deg);
+  }
+}
+
+@keyframes mascot-excited {
+  0%, 100% {
+    transform: scale(1.1) rotate(12deg) translateY(0px);
+  }
+  20% {
+    transform: scale(1.15) rotate(8deg) translateY(-6px);
+  }
+  40% {
+    transform: scale(1.08) rotate(16deg) translateY(-3px);
+  }
+  60% {
+    transform: scale(1.12) rotate(10deg) translateY(-8px);
+  }
+  80% {
+    transform: scale(1.14) rotate(14deg) translateY(-2px);
+  }
+}
+
+@keyframes mascot-blink {
+  0%, 90%, 100% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes mascot-wiggle {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(3deg);
+  }
+  75% {
+    transform: rotate(-3deg);
+  }
+}
+
+.animate-mascot-float {
+  animation: mascot-float 4s ease-in-out infinite;
+}
+
+.animate-mascot-excited {
+  animation: mascot-excited 1.5s ease-in-out infinite;
+}
+
+.animate-mascot-blink {
+  animation: mascot-blink 3s ease-in-out infinite;
+}
+
+.animate-mascot-wiggle {
+  animation: mascot-wiggle 2s ease-in-out infinite;
+}
+
+/* Additional Interactive Animations */
+@keyframes mascot-wave {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(10deg) scale(1.05);
+  }
+  50% {
+    transform: rotate(-5deg) scale(1.1);
+  }
+  75% {
+    transform: rotate(8deg) scale(1.05);
+  }
+}
+
+@keyframes mascot-surprise {
+  0%, 100% {
+    transform: scale(1) translateY(0px);
+  }
+  20% {
+    transform: scale(1.2) translateY(-10px);
+  }
+  40% {
+    transform: scale(0.9) translateY(5px);
+  }
+  60% {
+    transform: scale(1.1) translateY(-5px);
+  }
+  80% {
+    transform: scale(1.05) translateY(2px);
+  }
+}
+
+@keyframes mascot-sleepy {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  25% {
+    transform: rotate(-2deg) scale(0.98);
+    opacity: 0.8;
+  }
+  50% {
+    transform: rotate(1deg) scale(0.95);
+    opacity: 0.6;
+  }
+  75% {
+    transform: rotate(-1deg) scale(0.98);
+    opacity: 0.8;
+  }
+}
+
+.animate-mascot-wave {
+  animation: mascot-wave 2s ease-in-out infinite;
+}
+
+.animate-mascot-surprise {
+  animation: mascot-surprise 1s ease-out;
+}
+
+.animate-mascot-sleepy {
+  animation: mascot-sleepy 3s ease-in-out infinite;
 }

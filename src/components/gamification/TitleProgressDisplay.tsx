@@ -94,7 +94,8 @@ export default function TitleProgressDisplay({
             ${styles.title} font-bold text-transparent bg-clip-text 
             bg-gradient-to-r ${currentGradient}
             ${animated ? 'animate-pulse' : ''}
-          `}>
+            drop-shadow-lg
+          `} style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }}>
             {currentTitle.name}
           </div>
           

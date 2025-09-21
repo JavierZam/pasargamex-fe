@@ -3,13 +3,21 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import UserProfileDropdown from './UserProfileDropdown'
 import LiveSearch from '@/components/ui/LiveSearch'
 import { useAchievements } from '@/hooks/useAchievements'
+import { useFirebaseAuth } from '@/hooks/useFirebaseAuth'
+import { useNotifications } from '@/hooks/useNotifications'
+import { useRole } from '@/contexts/AuthContext'
+import UserProfile from '@/components/auth/UserProfile'
+// LoginModal removed - using dedicated /login page instead
 
 export default function Header() {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false)
+  // Login modal state removed - now using /login page
   const { trackSecretTrigger } = useAchievements()
+  const { user, isAuthenticated, loading } = useFirebaseAuth()
+  const { unreadMessages, wishlistItems } = useNotifications()
+  const { isSeller, role } = useRole()
 
   const handleLogoClick = () => {
     trackSecretTrigger('logo_clicks')
@@ -54,37 +62,75 @@ export default function Header() {
                 <svg className="w-5 h-5 text-gray-400 group-hover:text-red-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
-                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-semibold shadow-lg">
-                  3
-                </div>
+                {wishlistItems > 0 && (
+                  <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-semibold shadow-lg">
+                    {wishlistItems}
+                  </div>
+                )}
               </Link>
 
               <Link
-                href="/messages"
+                href="/chat"
                 className="relative group p-3 rounded-2xl bg-gray-800/40 hover:bg-green-500/20 border border-gray-700/50 hover:border-green-500/50 transition-all duration-300"
                 title="Messages"
               >
                 <svg className="w-5 h-5 text-gray-400 group-hover:text-green-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 4v-4z" />
                 </svg>
-                <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-semibold shadow-lg">
-                  2
-                </div>
+                {unreadMessages > 0 && (
+                  <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-semibold shadow-lg">
+                    {unreadMessages}
+                  </div>
+                )}
               </Link>
             </div>
 
-            {/* Sell Button */}
-            <Link href="/seller/create-product">
-              <Button className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl hover:shadow-green-500/30 hover:scale-105">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Sell
-              </Button>
-            </Link>
+            {/* Sell Button - Only for sellers */}
+            {isSeller ? (
+              <Link href="/seller/create-product">
+                <Button className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl hover:shadow-green-500/30 hover:scale-105">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Sell
+                </Button>
+              </Link>
+            ) : (
+              <div className="group relative">
+                <Button 
+                  disabled 
+                  className="bg-gradient-to-r from-gray-600 to-gray-700 text-gray-300 px-6 py-3 rounded-2xl font-semibold transition-all duration-300 flex items-center gap-2 shadow-lg cursor-not-allowed"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Sell
+                </Button>
+                <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap">
+                  Only SELLERS can list products. Your role: {role?.toUpperCase() || 'UNKNOWN'}
+                </div>
+              </div>
+            )}
 
             {/* Profile */}
-            <UserProfileDropdown />
+            {isAuthenticated ? (
+              <UserProfile />
+            ) : (
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/login"
+                  className="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/login"
+                  className="bg-gradient-to-r from-brand-red to-brand-blue text-white px-4 py-2 rounded-lg text-sm font-semibold hover:shadow-lg transition-all gaming-glow"
+                >
+                  Sign Up
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Mobile Actions */}
@@ -99,13 +145,24 @@ export default function Header() {
               </svg>
             </button>
             
-            <Link href="/seller/create-product">
-              <Button className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-3 rounded-2xl text-sm font-medium shadow-lg hover:shadow-green-500/30 transition-all duration-300">
+            {isSeller ? (
+              <Link href="/seller/create-product">
+                <Button className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-3 rounded-2xl text-sm font-medium shadow-lg hover:shadow-green-500/30 transition-all duration-300">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </Button>
+              </Link>
+            ) : (
+              <Button 
+                disabled 
+                className="bg-gradient-to-r from-gray-600 to-gray-700 text-gray-300 px-4 py-3 rounded-2xl text-sm font-medium shadow-lg cursor-not-allowed"
+              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
               </Button>
-            </Link>
+            )}
           </div>
         </div>
 
@@ -134,6 +191,7 @@ export default function Header() {
           </div>
         )}
       </nav>
+
     </header>
   )
 }

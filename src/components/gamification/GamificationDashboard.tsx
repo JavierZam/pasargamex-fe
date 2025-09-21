@@ -84,35 +84,39 @@ export default function GamificationDashboard({ className = '', compact = false 
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Header Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-blue-900/20 to-blue-800/20 border-blue-700/30">
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-blue-400">{stats.level}</div>
-            <div className="text-sm text-gray-400">Current Level</div>
+      {/* Header Stats - Enhanced Gaming Style */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-blue-900/30 to-blue-800/30 border-blue-500/40 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-blue-500/5 opacity-50"></div>
+          <CardContent className="p-6 text-center relative">
+            <div className="text-3xl font-bold text-blue-400 gaming-text-glow">{stats.level}</div>
+            <div className="text-sm font-medium text-blue-200 uppercase tracking-wider">Level</div>
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-br from-yellow-900/20 to-yellow-800/20 border-yellow-700/30">
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-yellow-400">{stats.totalPoints.toLocaleString()}</div>
-            <div className="text-sm text-gray-400">Total Points</div>
+        <Card className="bg-gradient-to-br from-yellow-900/30 to-orange-800/30 border-yellow-500/40 shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/30 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/5 via-transparent to-orange-500/5 opacity-50"></div>
+          <CardContent className="p-6 text-center relative">
+            <div className="text-3xl font-bold text-yellow-400 gaming-text-glow">{stats.totalPoints.toLocaleString()}</div>
+            <div className="text-sm font-medium text-yellow-200 uppercase tracking-wider">EXP Points</div>
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-br from-green-900/20 to-green-800/20 border-green-700/30">
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-green-400">
-              {stats.achievementsUnlocked}/{stats.totalAchievements}
+        <Card className="bg-gradient-to-br from-green-900/30 to-emerald-800/30 border-green-500/40 shadow-lg shadow-green-500/20 hover:shadow-green-500/30 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-50"></div>
+          <CardContent className="p-6 text-center relative">
+            <div className="text-3xl font-bold text-green-400 gaming-text-glow">
+              {stats.achievementsUnlocked}<span className="text-xl text-green-300">/{stats.totalAchievements}</span>
             </div>
-            <div className="text-sm text-gray-400">Achievements</div>
+            <div className="text-sm font-medium text-green-200 uppercase tracking-wider">Achievements</div>
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-br from-purple-900/20 to-purple-800/20 border-purple-700/30">
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-purple-400">{stats.secretsFound}</div>
-            <div className="text-sm text-gray-400">Secrets Found</div>
+        <Card className="bg-gradient-to-br from-purple-900/30 to-pink-800/30 border-purple-500/40 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-transparent to-pink-500/5 opacity-50"></div>
+          <CardContent className="p-6 text-center relative">
+            <div className="text-3xl font-bold text-purple-400 gaming-text-glow">{stats.secretsFound}</div>
+            <div className="text-sm font-medium text-purple-200 uppercase tracking-wider">Secrets</div>
           </CardContent>
         </Card>
       </div>

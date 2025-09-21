@@ -19,6 +19,18 @@ module.exports = {
           'red-light': '#F87171',
           'blue-light': '#3B82F6',
         },
+        // Gaming Theme Colors
+        'bg-dark': {
+          primary: '#0F0F23',
+          secondary: '#1A1B3A', 
+          accent: '#252555',
+        },
+        neon: {
+          green: '#00FF88',
+          purple: '#8B5CF6', 
+          yellow: '#FBBF24',
+          cyan: '#06B6D4',
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

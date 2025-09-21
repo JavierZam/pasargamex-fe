@@ -1,6 +1,7 @@
 import { ApiResponse } from '@/types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pasargamex-api-244929333106.asia-southeast2.run.app'
+const IS_DEVELOPMENT = process.env.NODE_ENV === 'development'
 
 class ApiClient {
   private baseURL: string
@@ -53,7 +54,11 @@ class ApiClient {
       }
 
       return data
-    } catch (error) {
+    } catch (error: any) {
+      // In development, log the error but don't throw for connection refused
+      if (IS_DEVELOPMENT && (error.message?.includes('Failed to fetch') || error.message?.includes('ERR_CONNECTION_REFUSED'))) {
+        console.warn(`🔌 Backend not available for ${endpoint} - this is normal in frontend-only development mode`)
+      }
       throw error
     }
   }
