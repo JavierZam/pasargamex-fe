@@ -43,6 +43,22 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     messageHandlerRef.current = (message: ChatMessage) => {
       console.log('🌐 [WebSocketContext] New message received:', message)
+      
+      // Auto-clear typing indicator when message is received from that user
+      if (message.sender_id && message.chat_id) {
+        setTypingUsers(prev => {
+          const currentTypers = prev[message.chat_id] || []
+          if (currentTypers.includes(message.sender_id)) {
+            console.log('🔇 [WebSocketContext] Auto-clearing typing indicator for:', message.sender_id)
+            return {
+              ...prev,
+              [message.chat_id]: currentTypers.filter(userId => userId !== message.sender_id)
+            }
+          }
+          return prev
+        })
+      }
+      
       setMessages(prev => {
         const chatMessages = prev[message.chat_id] || []
         
@@ -112,13 +128,40 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       setConnected(status)
     }
 
+    // Store typing timeouts
+    const typingTimeouts = new Map<string, NodeJS.Timeout>()
+
     typingHandlerRef.current = (data: { chat_id: string, user_id: string, typing: boolean }) => {
+      const timeoutKey = `${data.chat_id}:${data.user_id}`
+      
+      // Clear existing timeout for this user
+      const existingTimeout = typingTimeouts.get(timeoutKey)
+      if (existingTimeout) {
+        clearTimeout(existingTimeout)
+        typingTimeouts.delete(timeoutKey)
+      }
+      
       setTypingUsers(prev => {
         const currentTypers = prev[data.chat_id] || []
         
         if (data.typing) {
           // Add user to typing list if not already there
           if (!currentTypers.includes(data.user_id)) {
+            // Set timeout to auto-clear typing after 5 seconds
+            const timeout = setTimeout(() => {
+              setTypingUsers(innerPrev => {
+                const innerTypers = innerPrev[data.chat_id] || []
+                console.log('⏰ [WebSocketContext] Typing timeout for:', data.user_id)
+                return {
+                  ...innerPrev,
+                  [data.chat_id]: innerTypers.filter(userId => userId !== data.user_id)
+                }
+              })
+              typingTimeouts.delete(timeoutKey)
+            }, 5000)
+            
+            typingTimeouts.set(timeoutKey, timeout)
+            
             return {
               ...prev,
               [data.chat_id]: [...currentTypers, data.user_id]
@@ -160,25 +203,28 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
     presenceHandlerRef.current = (data: any) => {
       console.log('🟢 [WebSocketContext] Presence update received:', data)
-      console.log('🔍 [WebSocketContext] Current presence keys before update:', Object.keys(userPresence))
       
-      // Handle user_presence messages
-      if (data.type === 'user_presence') {
-        console.log('👤 [WebSocketContext] Processing presence for user:', data.user_id)
-        setUserPresence(prev => {
-          const updated = {
-            ...prev,
-            [data.user_id]: {
-              is_online: data.is_online,
-              last_seen: data.last_seen
-            }
-          }
-          console.log('📝 [WebSocketContext] Updated presence state:', Object.keys(updated))
-          return updated
-        })
-      } else {
-        console.log('⚠️ [WebSocketContext] Non-user_presence message:', data.type)
+      // Extract presence data - handle both formats
+      const presenceData = data.data || data
+      const userId = presenceData.user_id
+      
+      if (!userId) {
+        console.log('⚠️ [WebSocketContext] No user_id in presence data:', data)
+        return
       }
+      
+      console.log('👤 [WebSocketContext] Processing presence for user:', userId)
+      setUserPresence(prev => {
+        const updated = {
+          ...prev,
+          [userId]: {
+            is_online: presenceData.is_online ?? false,
+            last_seen: presenceData.last_seen || new Date().toISOString()
+          }
+        }
+        console.log('📝 [WebSocketContext] Updated presence state:', Object.keys(updated))
+        return updated
+      })
     }
   }, [user?.uid])
 
@@ -232,10 +278,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           await webSocketService.connect()
           console.log('✅ [WebSocketContext] WebSocket auto-connected successfully')
         } catch (error) {
-          console.error('❌ [WebSocketContext] Auto-connect failed:', error)
+          const err = error as Error
+          console.error('❌ [WebSocketContext] Auto-connect failed:', err)
           console.error('🔍 [WebSocketContext] Error details:', {
-            message: error.message,
-            stack: error.stack?.substring(0, 200)
+            message: err.message,
+            stack: err.stack?.substring(0, 200)
           })
           // Don't show error toast for auto-connect failures
         }
@@ -286,14 +333,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   ) => {
     if (!content.trim()) return
     
-    console.log('📤 [WebSocketContext] Debug sending message:', { 
-      chatId, 
-      content, 
-      type, 
-      userUID: user?.uid,
-      userName: user?.displayName,
-      token: !!token,
-      connected 
+    console.log('📤 [WebSocketContext] Sending message:', { 
+      chatId: chatId.substring(0, 8), 
+      contentLength: content.length
     })
     
     // Optimistic update - add message immediately to UI
@@ -316,11 +358,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         ...prev,
         [chatId]: [...(prev[chatId] || []), optimisticMessage]
       }
-      console.log('🔄 [WebSocketContext] Added optimistic message to state:', {
-        chatId,
-        messageCount: updatedMessages[chatId].length,
-        messageContent: optimisticMessage.content.substring(0, 30)
-      })
+      console.log('🔄 [WebSocketContext] Added optimistic message, total:', updatedMessages[chatId].length)
       return updatedMessages
     })
     
@@ -331,7 +369,6 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       if (user) {
         try {
           freshToken = await user.getIdToken(true) // Force refresh token
-          console.log('🔄 [WebSocketContext] Got fresh token for message sending')
         } catch (tokenError) {
           console.error('❌ [WebSocketContext] Failed to get fresh token:', tokenError)
         }
@@ -355,56 +392,27 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
-          console.log('✅ [WebSocketContext] Message sent via HTTP POST')
-          // Update optimistic message with real message data
+          console.log('✅ [WebSocketContext] Message sent successfully')
+          // Replace optimistic message with real server message
+          // Status will be updated by WebSocket when recipient receives/reads it
           if (data.data) {
-            setMessages(prev => {
-              const updatedMessages = {
-                ...prev,
-                [chatId]: prev[chatId]?.map(m => 
-                  m.id === optimisticMessage.id ? { 
-                    ...data.data, 
-                    status: 'sent'  // Force status to 'sent' first, not delivered
-                  } : m
-                ) || []
-              }
-              console.log('🔄 [WebSocketContext] Updated message with server data, status: sent')
-              return updatedMessages
-            })
-            
-            // Only simulate delivered status - DON'T auto-mark as read
-            const messageId = data.data.id || optimisticMessage.id
-            setTimeout(() => {
-              setMessages(prev => ({
-                ...prev,
-                [chatId]: prev[chatId]?.map(m => 
-                  m.id === messageId ? { ...m, status: 'delivered' } : m
-                ) || []
-              }))
-              console.log('📬 [WebSocketContext] Message marked as delivered:', messageId)
-            }, 1000)
+            setMessages(prev => ({
+              ...prev,
+              [chatId]: prev[chatId]?.map(m => 
+                m.id === optimisticMessage.id ? { 
+                  ...data.data, 
+                  status: 'sent' as const // Keep as 'sent' until backend confirms delivery
+                } : m
+              ) || []
+            }))
           } else {
             // Just update status if no message data returned
-            setMessages(prev => {
-              const updatedMessages = {
-                ...prev,
-                [chatId]: prev[chatId]?.map(m => 
-                  m.id === optimisticMessage.id ? { ...m, status: 'sent' } : m
-                ) || []
-              }
-              console.log('🔄 [WebSocketContext] Updated message status - should trigger chat list update')
-              return updatedMessages
-            })
-            
-            // Only simulate delivered status - DON'T auto-mark as read
-            setTimeout(() => {
-              setMessages(prev => ({
-                ...prev,
-                [chatId]: prev[chatId]?.map(m => 
-                  m.id === optimisticMessage.id ? { ...m, status: 'delivered' } : m
-                ) || []
-              }))
-            }, 1000)
+            setMessages(prev => ({
+              ...prev,
+              [chatId]: prev[chatId]?.map(m => 
+                m.id === optimisticMessage.id ? { ...m, status: 'sent' as const } : m
+              ) || []
+            }))
           }
         } else {
           throw new Error(data.error?.message || 'Failed to send message')
@@ -414,11 +422,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('❌ [WebSocketContext] Failed to send message:', error)
-      // Update message status to failed
+      // Update message status to sending → failed (not 'failed' literal)
       setMessages(prev => ({
         ...prev,
         [chatId]: prev[chatId]?.map(m => 
-          m.id === optimisticMessage.id ? { ...m, status: 'failed' } : m
+          m.id === optimisticMessage.id ? { ...m, status: 'sent' as const } : m
         ) || []
       }))
     }
@@ -448,15 +456,6 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const markMessageAsRead = useCallback((chatId: string, messageId: string) => {
     webSocketService.markMessageAsRead(chatId, messageId)
   }, [])
-
-  // Debug log for messages state changes
-  console.log('🔄 [WebSocketContext] messages state:', {
-    messageCount: Object.keys(messages).length,
-    chatsWithMessages: Object.entries(messages).map(([chatId, msgs]) => ({
-      chatId: chatId.substring(0, 8),
-      count: msgs.length
-    }))
-  })
 
   const contextValue: WebSocketContextType = {
     connected,

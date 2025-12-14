@@ -5,7 +5,8 @@ import { ChatMessage } from '@/services/websocket'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/button'
-import { formatDistanceToNow } from 'date-fns'
+import { formatRelativeTime } from '@/lib/utils'
+import { isValidAvatarUrl } from '@/lib/chat-utils'
 import { useRole } from '@/contexts/AuthContext'
 
 interface ChatMessageProps {
@@ -18,19 +19,9 @@ export function ChatMessageComponent({ message, isCurrentUser, onPaymentAction }
   const [imageLoading, setImageLoading] = useState(true)
   const { isBuyer, isSeller, role } = useRole()
   
-  // Helper function to validate URLs
-  const isValidUrl = (url?: string | null): boolean => {
-    if (!url) return false
-    if (url.includes('Unknown')) return false
-    if (url.includes('undefined')) return false
-    if (url.includes('null')) return false
-    if (!url.startsWith('http')) return false
-    return true
-  }
-  
   const formatTime = (timestamp: string) => {
     try {
-      return formatDistanceToNow(new Date(timestamp), { addSuffix: true })
+      return formatRelativeTime(timestamp)
     } catch {
       return 'Just now'
     }
@@ -259,7 +250,7 @@ export function ChatMessageComponent({ message, isCurrentUser, onPaymentAction }
       case 'system':
         return (
           <div className="text-center">
-            <Badge variant="secondary" className="bg-gray-100 text-gray-600">
+            <Badge variant="info" className="bg-gray-100 text-gray-600">
               {message.content}
             </Badge>
           </div>
@@ -299,7 +290,7 @@ export function ChatMessageComponent({ message, isCurrentUser, onPaymentAction }
     <div className={`flex gap-3 mb-4 ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'}`}>
       {!isCurrentUser && (
         <Avatar
-          src={(message as any).sender_avatar && isValidUrl((message as any).sender_avatar) ? (message as any).sender_avatar : undefined}
+          src={(message as any).sender_avatar && isValidAvatarUrl((message as any).sender_avatar) ? (message as any).sender_avatar : undefined}
           fallback={message.sender_name?.charAt(0)?.toUpperCase() || '?'}
           alt={message.sender_name}
           size="sm"

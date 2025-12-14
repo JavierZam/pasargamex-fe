@@ -9,6 +9,7 @@ import { TypingIndicator } from './TypingIndicator'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/button'
 import { buildApiUrl, API_CONFIG } from '@/lib/config'
+import { isValidAvatarUrl, formatLastSeen, getRoleBadgeClasses, getRoleExplanation } from '@/lib/chat-utils'
 
 interface ChatWindowProps {
   chatId: string | null
@@ -17,7 +18,7 @@ interface ChatWindowProps {
     user_id: string
     name: string
     avatar?: string
-    role: 'buyer' | 'seller' | 'admin'
+    role: 'buyer' | 'seller' | 'admin' | 'middleman'
   }>
   productId?: string
   onClose?: () => void
@@ -254,7 +255,7 @@ export function ChatWindow({ chatId, chatTitle, participants = [], productId, on
     // You might want to send a system message or update the UI
     if (chatId) {
       const actionText = action === 'accept' ? 'accepted' : 'rejected'
-      sendMessage(chatId, `Payment offer ${actionText}`, 'system')
+      sendMessage(chatId, `Payment offer ${actionText}`, 'text')
     }
   }
 
@@ -274,40 +275,6 @@ export function ChatWindow({ chatId, chatTitle, participants = [], productId, on
     
     return result
   }, [participantData, participants, user?.uid])
-
-  // Helper function to validate avatar URLs
-  const isValidAvatarUrl = (url?: string | null): boolean => {
-    if (!url) return false
-    if (url.includes('Unknown')) return false
-    if (url.includes('undefined')) return false
-    if (url.includes('null')) return false
-    if (!url.startsWith('http')) return false
-    return true
-  }
-
-  const formatLastSeen = (lastSeen?: string, fallbackDate?: string) => {
-    const dateToUse = lastSeen || fallbackDate
-    if (!dateToUse) return 'Long time ago'
-    
-    try {
-      const date = new Date(dateToUse)
-      const now = new Date()
-      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
-      
-      if (diffInMinutes < 1) return 'Just now'
-      if (diffInMinutes < 60) return `${diffInMinutes}m ago`
-      
-      const diffInHours = Math.floor(diffInMinutes / 60)
-      if (diffInHours < 24) return `${diffInHours}h ago`
-      
-      const diffInDays = Math.floor(diffInHours / 24)
-      if (diffInDays < 7) return `${diffInDays}d ago`
-      
-      return date.toLocaleDateString()
-    } catch (error) {
-      return 'Long time ago'
-    }
-  }
 
   if (!chatId) {
     return (
@@ -391,17 +358,16 @@ export function ChatWindow({ chatId, chatTitle, participants = [], productId, on
               </div>
               
               <div className="flex items-center gap-3 text-sm">
-                {/* Real Online Status */}
-                {otherParticipants.length > 0 ? (
-                  otherParticipants[0].online_status === 'online' ? (
+                {/* Real Online Status - prioritize real-time presence data */}
+                {otherParticipants.length > 0 ? (() => {
+                  const otherUserId = otherParticipants[0].user_id
+                  const presenceData = userPresence[otherUserId]
+                  const isOnline = presenceData?.is_online || otherParticipants[0].online_status === 'online'
+                  
+                  return isOnline ? (
                     <div className="flex items-center gap-1.5">
                       <div className="w-2 h-2 bg-neon-green rounded-full animate-pulse"></div>
                       <span className="text-neon-green font-semibold">ONLINE</span>
-                      {process.env.NODE_ENV === 'development' && (
-                        <span className="text-xs text-gray-500 block">
-                          Debug: status=online, last_seen={otherParticipants[0].last_seen}
-                        </span>
-                      )}
                     </div>
                   ) : (
                     <div className="flex items-center gap-1.5">
@@ -409,17 +375,14 @@ export function ChatWindow({ chatId, chatTitle, participants = [], productId, on
                       <div className="flex flex-col">
                         <span className="text-gray-400 font-semibold">
                           Last seen {formatLastSeen(
-                            userPresence[otherParticipants[0].user_id]?.last_seen || otherParticipants[0].last_seen, 
+                            presenceData?.last_seen || otherParticipants[0].last_seen, 
                             chatData?.last_message_at || chatData?.other_user?.updated_at
                           )}
-                        </span>
-                        <span className="text-xs text-gray-400 mt-1 block border border-yellow-500 p-1 rounded">
-                          🐛 DEBUG: looking_for_uid={otherParticipants[0].user_id?.substring(0,12)}... | presence_keys=[{Object.keys(userPresence).map(k => k.substring(0,8)).join(',')}] | connected={connected} | status={userPresence[otherParticipants[0].user_id]?.is_online ? 'online' : 'offline'} | last_seen={userPresence[otherParticipants[0].user_id]?.last_seen || otherParticipants[0].last_seen || 'NULL'} | presence_data={userPresence[otherParticipants[0].user_id] ? 'FOUND' : 'MISSING'}
                         </span>
                       </div>
                     </div>
                   )
-                ) : connected ? (
+                })() : connected ? (
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 bg-neon-green rounded-full animate-pulse"></div>
                     <span className="text-neon-green font-semibold">CONNECTED</span>
@@ -509,7 +472,7 @@ export function ChatWindow({ chatId, chatTitle, participants = [], productId, on
                   onClick={() => {
                     // Send product showcase message
                     if (chatId) {
-                      sendMessage(chatId, `Product: ${productData.name}`, 'product')
+                      sendMessage(chatId, `[Product] ${productData.name} - Rp ${productData.price}`, 'text')
                     }
                   }}
                 >
@@ -610,11 +573,12 @@ export function ChatWindow({ chatId, chatTitle, participants = [], productId, on
         )}
         
         {/* Typing indicator - convert user IDs to usernames */}
-        {typingUsers.length > 0 && console.log('👨‍💻 Typing users:', typingUsers)}
-        <TypingIndicator typingUsers={typingUsers.map(userId => {
-          const participant = participantData.find(p => p.user_id === userId)
-          return participant?.name || userId
-        })} />
+        {typingUsers.length > 0 && (
+          <TypingIndicator typingUsers={typingUsers.map(userId => {
+            const participant = participantData.find(p => p.user_id === userId)
+            return participant?.name || userId
+          })} />
+        )}
         
         {/* Scroll anchor */}
         <div ref={messagesEndRef} />

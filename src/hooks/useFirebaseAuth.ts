@@ -36,9 +36,8 @@ export function useFirebaseAuth(): UseFirebaseAuthReturn {
   const [error, setError] = useState<string | null>(null)
   const [userToken, setUserToken] = useState<string | null>(null)
   
-  // OAuth debouncing to prevent multiple simultaneous calls
-  const oauthCallInProgress = useRef(false)
-  const oauthDebounceTimer = useRef<NodeJS.Timeout | null>(null)
+  // OAuth call tracking - only call once per session
+  const oauthCompletedForSession = useRef(false)
 
   // Listen for auth state changes
   useEffect(() => {
@@ -69,26 +68,15 @@ export function useFirebaseAuth(): UseFirebaseAuthReturn {
             uid: user.uid,
             email: user.email,
             displayName: user.displayName,
-            provider: user.providerData[0]?.providerId,
-            tokenLength: token.length
+            provider: user.providerData[0]?.providerId
           })
           
-          // Debounced OAuth call to prevent race conditions
-          if (oauthDebounceTimer.current) {
-            clearTimeout(oauthDebounceTimer.current)
-          }
-          
-          oauthDebounceTimer.current = setTimeout(async () => {
-            // Only make OAuth call if none is in progress
-            if (oauthCallInProgress.current) {
-              console.log('🚫 OAuth call already in progress, skipping...')
-              return
-            }
-            
-            oauthCallInProgress.current = true
+          // Only call OAuth endpoint once per session
+          if (!oauthCompletedForSession.current) {
+            oauthCompletedForSession.current = true
             
             try {
-              console.log('🔄 Making debounced OAuth call...')
+              console.log('🔄 Syncing user with backend (once per session)...')
               const response = await fetch('http://localhost:8080/v1/auth/oauth', {
                 method: 'POST',
                 headers: {
@@ -99,16 +87,16 @@ export function useFirebaseAuth(): UseFirebaseAuthReturn {
               
               if (response.ok) {
                 const data = await response.json()
-                console.log('✅ OAuth backend user updated:', data)
+                console.log('✅ OAuth backend sync complete:', data)
               } else {
-                console.log('⚠️ OAuth backend update failed, but continuing with Firebase auth')
+                console.warn('⚠️ OAuth backend sync failed, but continuing with Firebase auth')
               }
             } catch (error) {
-              console.log('⚠️ OAuth backend call failed, but continuing with Firebase auth:', error)
-            } finally {
-              oauthCallInProgress.current = false
+              console.warn('⚠️ OAuth backend call failed, but continuing with Firebase auth:', error)
             }
-          }, 10000) // 10 second debounce to prevent OAuth spam
+          } else {
+            console.log('✅ OAuth already synced this session, skipping duplicate call')
+          }
         } catch (err) {
           console.error('Error getting user token:', err)
         }
@@ -123,10 +111,6 @@ export function useFirebaseAuth(): UseFirebaseAuthReturn {
 
     return () => {
       unsubscribe()
-      // Clean up debounce timer
-      if (oauthDebounceTimer.current) {
-        clearTimeout(oauthDebounceTimer.current)
-      }
     }
   }, [])
 

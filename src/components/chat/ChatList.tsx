@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react'
 import { useFirebaseAuth } from '@/hooks/useFirebaseAuth'
 import { useWebSocketContext } from '@/contexts/WebSocketContext'
 import { ChatRoom } from '@/services/websocket'
+import wsService from '@/services/websocket'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/button'
-import { formatDistanceToNow } from 'date-fns'
+import { formatRelativeTime } from '@/lib/utils'
+import { truncateMessage, isValidAvatarUrl, getRoleBadgeClasses } from '@/lib/chat-utils'
 import { buildApiUrl, API_CONFIG } from '@/lib/config'
 
 interface ChatListProps {
@@ -97,7 +99,7 @@ export function ChatList({ selectedChatId, onChatSelect, onNewChat }: ChatListPr
           console.log('Raw chat data from backend:', JSON.stringify(data.data.items, null, 2))
           
           // Transform backend data to frontend format based on actual backend structure from test file
-          const transformedChats = await Promise.all(data.data.items.map(async (chat) => {
+          const transformedChats = await Promise.all(data.data.items.map(async (chat: any) => {
             console.log('Processing chat:', chat)
             
             // Load detailed participants data using separate participants API like in test file
@@ -117,7 +119,7 @@ export function ChatList({ selectedChatId, onChatSelect, onNewChat }: ChatListPr
                   console.log(`Participants API response for ${chat.id}:`, JSON.stringify(participantsData, null, 2))
                   
                   if (participantsData.success && participantsData.data && participantsData.data.participants) {
-                    participantsWithNames = participantsData.data.participants.map(p => ({
+                    participantsWithNames = participantsData.data.participants.map((p: any) => ({
                       user_id: p.user_id || p.id || '',
                       name: p.username || p.display_name || p.name || `Player-${(p.user_id || '').slice(-4)}`,
                       avatar: p.avatar || p.profile_picture,
@@ -132,7 +134,7 @@ export function ChatList({ selectedChatId, onChatSelect, onNewChat }: ChatListPr
               if (participantsWithNames.length === 0) {
                 console.log('Using fallback participants from chat data')
                 participantsWithNames = await Promise.all(
-                  (chat?.participants || []).map(async (p) => {
+                  (chat?.participants || []).map(async (p: any) => {
                     const userId = p?.user_id || p?.id || ''
                     let displayName = p?.username || p?.display_name || p?.name
                     
@@ -172,8 +174,7 @@ export function ChatList({ selectedChatId, onChatSelect, onNewChat }: ChatListPr
               unread_count: chat?.unread_count || 0,
               created_at: chat?.created_at || new Date().toISOString(),
               updated_at: chat?.updated_at || new Date().toISOString(),
-              product_id: chat?.product_id,
-              chat_type: chat?.chat_type || chat?.type || 'individual'
+              product_id: chat?.product_id
             }
           }))
           
@@ -206,93 +207,136 @@ export function ChatList({ selectedChatId, onChatSelect, onNewChat }: ChatListPr
     loadChats()
   }, [token, user])
 
-  // Real-time update chat list when NEW messages arrive (not when loading old messages)
+  // Listen for chat_list_update events from WebSocket (for updates when not inside a chat room)
   useEffect(() => {
-    console.log('🔄 ChatList: Messages state changed, checking for NEW messages...')
-    console.log('📊 Current messages state:', Object.keys(messages).map(chatId => ({
-      chatId: chatId.substring(0, 8),
-      messageCount: messages[chatId]?.length || 0,
-      lastMessage: messages[chatId]?.[messages[chatId].length - 1]?.content?.substring(0, 30)
-    })))
-    
-    // Only update chat list for NEW messages (sent in last 10 seconds)
-    if (Object.keys(messages).length > 0) {
-      console.log('🎯 Checking for NEW messages in', Object.keys(messages).length, 'chats')
-      
-      Object.entries(messages).forEach(([chatId, chatMessages]) => {
-        if (chatMessages.length === 0) return
+    const handleChatUpdate = (data: any) => {
+      if (data.type === 'chat_list_update') {
+        console.log('📋 Chat list update received:', data)
         
-        const lastMessage = chatMessages[chatMessages.length - 1]
-        const messageAge = Date.now() - new Date(lastMessage.timestamp).getTime()
-        
-        // Always process optimistic messages (just sent by user) or messages less than 60 seconds old
-        const isOptimisticMessage = lastMessage.id.includes('temp-')
-        if (!isOptimisticMessage && messageAge > 60000) {
-          console.log('📋 Skipping old message for chat', chatId.substring(0, 8), 'age:', Math.round(messageAge / 1000), 'seconds')
-          return
-        }
-        
-        console.log('📨 Processing message for chat', chatId.substring(0, 8), ':', {
-          messageId: lastMessage.id.substring(0, 8),
-          content: lastMessage.content?.substring(0, 30),
-          timestamp: new Date(lastMessage.timestamp).toLocaleTimeString(),
-          status: lastMessage.status,
-          age: Math.round(messageAge / 1000) + 's',
-          isOptimistic: isOptimisticMessage,
-          reason: isOptimisticMessage ? 'OPTIMISTIC' : 'RECENT'
-        })
-        
-        // Update the chat list with NEW message
         setChats(prevChats => {
-          const existingChatIndex = prevChats.findIndex(chat => chat.id === chatId)
+          const chatId = data.chat_id
+          const chatIndex = prevChats.findIndex(c => c.id === chatId)
           
-          if (existingChatIndex >= 0) {
-            console.log('📝 Updating chat in list:', chatId.substring(0, 8), 'at index:', existingChatIndex)
-            
-            const updatedChats = [...prevChats]
-            const currentChat = updatedChats[existingChatIndex]
-            
-            // Create updated chat with new last message
-            const updatedChat = {
-              ...currentChat,
-              last_message: {
-                id: lastMessage.id,
-                chat_id: chatId,
-                sender_id: lastMessage.sender_id,
-                sender_name: lastMessage.sender_name,
-                content: lastMessage.content || 'New message',
-                type: lastMessage.type,
-                timestamp: lastMessage.timestamp,
-                status: lastMessage.status,
-                attachment_urls: lastMessage.attachment_urls || [],
-                metadata: lastMessage.metadata || {}
-              },
-              updated_at: new Date().toISOString(),
-              // Update unread count for real-time messages
-              unread_count: typeof currentChat.unread_count === 'object' 
-                ? currentChat.unread_count 
-                : (lastMessage.sender_id !== user?.uid ? (currentChat.unread_count || 0) + 1 : currentChat.unread_count || 0)
-            }
-            
-            // Move to top of list
-            updatedChats.splice(existingChatIndex, 1)
-            updatedChats.unshift(updatedChat)
-            
-            console.log('🚀 MOVED CHAT TO TOP:', chatId.substring(0, 8))
-            return updatedChats
-          } else {
-            console.log('⚠️ Chat not found in list:', chatId.substring(0, 8))
-            console.log('Available chats:', prevChats.map(c => c.id.substring(0, 8)))
-            
-            // If chat not found, this might be a new chat - we should refetch chat list
-            // For now, just log it
+          if (chatIndex === -1) {
+            // Chat not in list, skip (will be loaded on next page load)
             return prevChats
           }
+          
+          const updatedChats = [...prevChats]
+          const existingChat = updatedChats[chatIndex]
+          
+          // Update the chat with new message info
+          updatedChats[chatIndex] = {
+            ...existingChat,
+            last_message: {
+              id: `update-${Date.now()}`,
+              chat_id: chatId,
+              sender_id: data.sender_id,
+              sender_name: data.sender_name || 'User',
+              content: data.last_message,
+              type: data.message_type || 'text',
+              timestamp: data.last_message_at,
+              status: 'delivered',
+              attachment_urls: [],
+              metadata: {}
+            },
+            updated_at: data.last_message_at,
+            unread_count: (existingChat.unread_count || 0) + 1
+          }
+          
+          // Re-sort to move this chat to top
+          updatedChats.sort((a, b) => {
+            const aTime = a.last_message?.timestamp ? new Date(a.last_message.timestamp).getTime() : new Date(a.updated_at || a.created_at).getTime()
+            const bTime = b.last_message?.timestamp ? new Date(b.last_message.timestamp).getTime() : new Date(b.updated_at || b.created_at).getTime()
+            return bTime - aTime
+          })
+          
+          console.log('✅ Chat list updated, moved chat to top:', chatId.substring(0, 8))
+          return updatedChats
         })
-      })
-    } else {
-      console.log('📭 No messages in WebSocket state yet')
+      }
     }
+
+    const unsubscribe = wsService.onChatUpdate(handleChatUpdate)
+    return () => { unsubscribe() }
+  }, [user?.uid])
+
+  // Real-time update chat list when NEW messages arrive (not when loading old messages)
+  useEffect(() => {
+    // Batch update: compute a single updated chats array and set it once to avoid repeated moves
+    if (Object.keys(messages).length === 0) {
+      return
+    }
+
+    setChats(prevChats => {
+      // Map existing chats for quick lookup
+      const chatMap = new Map<string, ChatRoom>()
+      prevChats.forEach(c => chatMap.set(c.id, c))
+
+      // For each chat in messages, decide whether to update its last_message
+      Object.entries(messages).forEach(([chatId, chatMessages]) => {
+        if (!chatMessages || chatMessages.length === 0) return
+
+        const lastMessage = chatMessages[chatMessages.length - 1]
+        const messageAge = Date.now() - new Date(lastMessage.timestamp).getTime()
+        const isOptimisticMessage = lastMessage.id.includes('temp-')
+
+        // Skip messages that are too old (not relevant for 'recent conversations')
+        if (!isOptimisticMessage && messageAge > 60000) {
+          // old message, ignore for ordering
+          return
+        }
+
+        const existingChat = chatMap.get(chatId)
+        const prevTimestamp = existingChat?.last_message?.timestamp ? new Date(existingChat.last_message.timestamp).getTime() : new Date(existingChat?.updated_at || existingChat?.created_at || 0).getTime()
+        const lastMsgTime = new Date(lastMessage.timestamp).getTime()
+
+        // Only update if the incoming message is newer than what we already have
+        if (!existingChat || lastMsgTime >= prevTimestamp) {
+          const updatedChat: ChatRoom = existingChat ? { ...existingChat } : {
+            id: chatId,
+            participants: [],
+            last_message: undefined,
+            unread_count: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            product_id: undefined
+          }
+
+          updatedChat.last_message = {
+            id: lastMessage.id,
+            chat_id: chatId,
+            sender_id: lastMessage.sender_id,
+            sender_name: lastMessage.sender_name,
+            content: lastMessage.content || 'New message',
+            type: lastMessage.type,
+            timestamp: lastMessage.timestamp,
+            status: lastMessage.status,
+            attachment_urls: lastMessage.attachment_urls || [],
+            metadata: lastMessage.metadata || {}
+          }
+
+          updatedChat.updated_at = new Date().toISOString()
+          // If message from someone else, increment unread count (best-effort)
+          if (lastMessage.sender_id !== user?.uid) {
+            updatedChat.unread_count = (existingChat?.unread_count || 0) + 1
+          }
+
+          chatMap.set(chatId, updatedChat)
+        }
+      })
+
+      // Build merged array preserving chats that weren't modified, and sort by last_message timestamp desc
+      const merged = Array.from(chatMap.values())
+      merged.sort((a, b) => {
+        const aTime = a.last_message?.timestamp ? new Date(a.last_message.timestamp).getTime() : new Date(a.updated_at || a.created_at).getTime()
+        const bTime = b.last_message?.timestamp ? new Date(b.last_message.timestamp).getTime() : new Date(b.updated_at || b.created_at).getTime()
+        return bTime - aTime
+      })
+
+      console.log('✅ Chat list sorted; total:', merged.length, 'Top:', merged[0]?.id?.substring(0,8))
+      return merged
+    })
   }, [messages, user?.uid])
 
   const filteredChats = chats.filter(chat => {
@@ -311,15 +355,10 @@ export function ChatList({ selectedChatId, onChatSelect, onNewChat }: ChatListPr
 
   const formatLastMessageTime = (timestamp: string) => {
     try {
-      return formatDistanceToNow(new Date(timestamp), { addSuffix: true })
+      return formatRelativeTime(timestamp)
     } catch {
       return ''
     }
-  }
-
-  const truncateMessage = (message: string | undefined, maxLength: number = 50) => {
-    if (!message || message.trim() === '' || message.trim() === 'No Message') return '💭 Ready to chat!'
-    return message.length > maxLength ? message.substring(0, maxLength) + '...' : message
   }
 
   if (loading) {
@@ -426,7 +465,7 @@ export function ChatList({ selectedChatId, onChatSelect, onNewChat }: ChatListPr
                   )}
                   <div className="flex items-start gap-3">
                     <Avatar
-                      src={otherParticipant?.avatar && !otherParticipant.avatar.includes('Unknown') ? otherParticipant.avatar : undefined}
+                      src={isValidAvatarUrl(otherParticipant?.avatar) ? otherParticipant?.avatar : undefined}
                       fallback={otherParticipant?.name?.charAt(0).toUpperCase() || '🎮'}
                       size="md"
                     />

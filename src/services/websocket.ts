@@ -8,12 +8,13 @@ export interface ChatMessage {
   chat_id: string
   sender_id: string
   sender_name: string
+  sender_avatar?: string
   content: string
-  type: 'text' | 'image' | 'system' | 'offer'
+  type: 'text' | 'image' | 'system' | 'offer' | 'product'
   attachment_urls?: string[]
   metadata?: Record<string, any>
   timestamp: string
-  status: 'sending' | 'sent' | 'delivered' | 'read'
+  status: 'sending' | 'sent' | 'delivered' | 'read' | 'failed'
 }
 
 export interface ChatRoom {
@@ -36,6 +37,7 @@ export interface WSMessage {
   chat_id?: string
   message?: ChatMessage
   data?: any
+  sender?: { id?: string; ID?: string; username?: string; Username?: string; avatar_url?: string; AvatarURL?: string }
   timestamp?: string
 }
 
@@ -169,7 +171,7 @@ class WebSocketService {
           
           // Only show toast on first connection or reconnection
           if (this.reconnectAttempts > 0) {
-            toast.success('Chat reconnected')
+            toast.success('Connected', 'Chat reconnected successfully')
           }
           resolve(true)
         }
@@ -207,7 +209,7 @@ class WebSocketService {
             }, Math.min(delay, 30000)) // Max 30 second delay
           } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
             console.error('❌ Max reconnection attempts reached')
-            toast.error('Chat disconnected - please refresh')
+            toast.error('Disconnected', 'Chat disconnected - please refresh the page')
           }
         }
 
@@ -265,8 +267,26 @@ class WebSocketService {
       case 'message':
       case 'new_message':
         if (data.message || data.data) {
-          const message = data.message || data.data
-          this.messageHandlers.forEach(handler => handler(message!))
+          const rawMessage = data.message || data.data
+          const sender = data.sender
+          
+          // Transform backend format to frontend format
+          const message: ChatMessage = {
+            id: rawMessage.id || rawMessage.ID || `temp-${Date.now()}`,
+            chat_id: rawMessage.chat_id || rawMessage.ChatID,
+            sender_id: rawMessage.sender_id || rawMessage.SenderID || sender?.id || sender?.ID,
+            sender_name: rawMessage.sender_name || sender?.username || sender?.Username || 'Unknown',
+            sender_avatar: rawMessage.sender_avatar || sender?.avatar_url || sender?.AvatarURL,
+            content: rawMessage.content || rawMessage.Content,
+            type: rawMessage.type || rawMessage.Type || 'text',
+            timestamp: rawMessage.timestamp || rawMessage.created_at || rawMessage.CreatedAt || new Date().toISOString(),
+            status: rawMessage.status || rawMessage.Status || 'delivered',
+            attachment_urls: rawMessage.attachment_urls || rawMessage.AttachmentURLs,
+            metadata: rawMessage.metadata || rawMessage.Metadata
+          }
+          
+          console.log('📨 Transformed message:', message)
+          this.messageHandlers.forEach(handler => handler(message))
         }
         break
 
@@ -285,7 +305,7 @@ class WebSocketService {
       case 'offer_update':
         console.log('💰 Offer update:', data.data)
         if (data.data?.status) {
-          toast.info(`Offer ${data.data.status}!`)
+          toast.info('Offer Update', `Offer ${data.data.status}!`)
         }
         this.chatUpdateHandlers.forEach(handler => handler(data))
         break
@@ -299,6 +319,19 @@ class WebSocketService {
         // Send pong response
         if (this.ws?.readyState === WebSocket.OPEN) {
           this.ws.send(JSON.stringify({ type: 'pong' }))
+        }
+        break
+
+      case 'delivery_receipt':
+        // Backend confirms message was delivered to online recipient
+        if (data.data?.message_id) {
+          console.log('✅ Delivery receipt received for message:', data.data.message_id)
+          const deliveredMessage = {
+            id: data.data.message_id,
+            status: 'delivered',
+            timestamp: new Date().toISOString()
+          } as any
+          this.messageHandlers.forEach(handler => handler(deliveredMessage))
         }
         break
 
@@ -327,21 +360,33 @@ class WebSocketService {
         break
 
       case 'typing_indicator':
+        console.log('⌨️ [typing_indicator] Full raw data:', JSON.stringify(data))
         if (data.data) {
-          this.typingHandlers.forEach(handler => handler(data.data))
+          console.log('⌨️ [typing_indicator] data.data:', JSON.stringify(data.data))
+          const typingData = {
+            chat_id: data.data.chat_id,
+            user_id: data.data.user_id,
+            typing: data.data.typing
+          }
+          console.log('⌨️ [typing_indicator] Extracted:', typingData)
+          this.typingHandlers.forEach(handler => handler(typingData))
+        } else {
+          console.warn('⌨️ [typing_indicator] No data.data found!')
         }
         break
 
       case 'chat_updated':
       case 'user_joined':
       case 'user_left':
+      case 'chat_list_update':
+        console.log('📋 Chat list/status update:', data.type, data)
         this.chatUpdateHandlers.forEach(handler => handler(data))
         break
 
       case 'payment_status_update':
         // Handle payment updates from chat
         if (data.data) {
-          toast.info('Payment status updated')
+          toast.info('Payment', 'Payment status updated')
           this.chatUpdateHandlers.forEach(handler => handler(data))
         }
         break
@@ -351,11 +396,21 @@ class WebSocketService {
         break
 
       case 'error':
-        console.error('❌ WebSocket server error:', data.data)
-        // Only show toast for critical errors, not unknown message types
+        console.warn('⚠️ WebSocket server error:', data.data)
+        // Only show toast for critical errors, not unknown message types or typing errors
         const errorMsg = data.data?.message || data.message || 'Unknown error'
-        if (!errorMsg.toLowerCase().includes('unknown message type')) {
-          toast.error(`Chat error: ${errorMsg}`)
+        const isMinorError = errorMsg.toLowerCase().includes('unknown message type') ||
+                            errorMsg.toLowerCase().includes('typing') ||
+                            errorMsg.toLowerCase().includes('not found') ||
+                            errorMsg.toLowerCase().includes('invalid')
+        
+        if (!isMinorError) {
+          // Only show for critical errors
+          const now = Date.now()
+          if (now - this.lastErrorToastTime > 5000) {
+            toast.error('Chat Error', errorMsg)
+            this.lastErrorToastTime = now
+          }
         }
         break
 
@@ -364,7 +419,7 @@ class WebSocketService {
         // Prevent spam of error toasts - only show once every 5 seconds
         const now = Date.now()
         if (now - this.lastErrorToastTime > 5000) {
-          toast.error('Sending messages too fast. Please wait a moment.')
+          toast.error('Rate Limited', 'Sending messages too fast. Please wait a moment.')
           this.lastErrorToastTime = now
         }
         break
@@ -372,25 +427,6 @@ class WebSocketService {
       default:
         console.warn('⚠️ Unhandled message type:', data.type, data)
         // Don't show error toast to prevent spam
-    }
-  }
-
-  // Public methods for chat operations
-  joinChatRoom(chatId: string) {
-    if (this.isConnected && this.ws) {
-      this.ws.send(JSON.stringify({
-        type: 'join_chat_room',
-        chat_id: chatId
-      }))
-    }
-  }
-
-  leaveChatRoom(chatId: string) {
-    if (this.isConnected && this.ws) {
-      this.ws.send(JSON.stringify({
-        type: 'leave_chat_room',
-        chat_id: chatId
-      }))
     }
   }
 

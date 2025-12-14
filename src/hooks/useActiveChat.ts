@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useWebSocketContext } from '@/contexts/WebSocketContext'
 import { useFirebaseAuth } from '@/hooks/useFirebaseAuth'
 import { buildApiUrl, API_CONFIG } from '@/lib/config'
@@ -89,50 +89,54 @@ export function useActiveChat(chatId: string | null) {
     }
   }, [chatId, token, previousChatId])
 
+  // Track the currently joined room with a ref to avoid stale closures
+  const joinedRoomRef = useRef<string | null>(null)
+
   useEffect(() => {
     console.log('🔄 [useActiveChat] Join room effect:', {
       connected: webSocket.connected,
       chatId: chatId?.substring(0, 8),
-      previousChatId: previousChatId?.substring(0, 8),
+      currentlyJoined: joinedRoomRef.current?.substring(0, 8),
       hasJoinFunction: !!webSocket.joinChatRoom,
-      hasLeaveFunction: !!webSocket.leaveChatRoom
     })
     
+    // If not connected or no chatId, ensure we're marked as not joined
     if (!webSocket.connected || !chatId) {
       console.log('⏸️ [useActiveChat] Skipping join - not connected or no chatId')
+      // Clear the ref but don't send leave (not connected)
+      joinedRoomRef.current = null
       return
     }
 
-    // Only join if we're not already in this chat
-    if (chatId !== previousChatId) {
-      console.log('🏠 [useActiveChat] Joining new chat room:', chatId.substring(0, 8) + '...')
+    // If we need to join a different room, leave the old one first
+    if (joinedRoomRef.current && joinedRoomRef.current !== chatId) {
+      console.log('🚪 [useActiveChat] Leaving previous chat room:', joinedRoomRef.current.substring(0, 8) + '...')
+      webSocket.leaveChatRoom(joinedRoomRef.current)
+      joinedRoomRef.current = null
+    }
+
+    // Join the new room if not already joined
+    if (joinedRoomRef.current !== chatId) {
+      console.log('🏠 [useActiveChat] Joining chat room:', chatId.substring(0, 8) + '...')
+      webSocket.joinChatRoom(chatId)
+      joinedRoomRef.current = chatId
+      console.log('✅ [useActiveChat] Joined room:', chatId.substring(0, 8) + '...')
       
-      // Leave previous chat room first
-      if (previousChatId) {
-        console.log('🚪 [useActiveChat] Leaving previous chat room:', previousChatId.substring(0, 8) + '...')
-        webSocket.leaveChatRoom(previousChatId)
-      }
-      
-      // Join new chat room
-      if (webSocket.joinChatRoom) {
-        webSocket.joinChatRoom(chatId)
-        console.log('✅ [useActiveChat] Sent join room message for:', chatId.substring(0, 8) + '...')
-      } else {
-        console.error('❌ [useActiveChat] joinChatRoom function not available!')
-      }
+      // Also update previousChatId for the load messages effect
       setPreviousChatId(chatId)
     } else {
       console.log('⏭️ [useActiveChat] Already in this chat room:', chatId.substring(0, 8) + '...')
     }
 
+    // Cleanup function - leave room on unmount or when dependencies change
     return () => {
-      // Cleanup: leave chat room when unmounting or changing
-      if (previousChatId && webSocket.leaveChatRoom) {
-        console.log('🧹 [useActiveChat] Cleanup - leaving chat room:', previousChatId.substring(0, 8) + '...')
-        webSocket.leaveChatRoom(previousChatId)
+      if (joinedRoomRef.current) {
+        console.log('🧹 [useActiveChat] Cleanup - leaving chat room:', joinedRoomRef.current.substring(0, 8) + '...')
+        webSocket.leaveChatRoom(joinedRoomRef.current)
+        joinedRoomRef.current = null
       }
     }
-  }, [chatId, webSocket.connected, webSocket.joinChatRoom, webSocket.leaveChatRoom, previousChatId])
+  }, [chatId, webSocket.connected, webSocket.joinChatRoom, webSocket.leaveChatRoom])
 
   return {
     ...webSocket,

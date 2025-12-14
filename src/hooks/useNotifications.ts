@@ -14,6 +14,7 @@ export function useNotifications(): NotificationCounts {
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [wishlistItems, setWishlistItems] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [wishlistApiAvailable, setWishlistApiAvailable] = useState(true)
 
   useEffect(() => {
     const fetchNotificationCounts = async () => {
@@ -45,25 +46,33 @@ export function useNotifications(): NotificationCounts {
           }
         }
 
-        // Fetch wishlist count (if API exists)
-        try {
-          const wishlistResponse = await fetch('http://localhost:8080/v1/wishlist', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          })
+        // Fetch wishlist count (if API exists) - silently fail if not implemented
+        if (wishlistApiAvailable) {
+          try {
+            const wishlistResponse = await fetch('http://localhost:8080/v1/wishlist', {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            })
 
-          if (wishlistResponse.ok) {
-            const wishlistData = await wishlistResponse.json()
-            if (wishlistData.success && wishlistData.data) {
-              setWishlistItems(wishlistData.data.length || 0)
+            if (wishlistResponse.ok) {
+              const wishlistData = await wishlistResponse.json()
+              if (wishlistData.success && wishlistData.data) {
+                setWishlistItems(wishlistData.data.length || 0)
+              }
+            } else if (wishlistResponse.status === 500 || wishlistResponse.status === 404) {
+              // API not implemented or error - disable future polling
+              console.debug('Wishlist API not available - disabling polling')
+              setWishlistApiAvailable(false)
+              setWishlistItems(0)
             }
+          } catch (wishlistError) {
+            // Network error or API not available - disable future polling
+            console.debug('Wishlist API error - disabling polling')
+            setWishlistApiAvailable(false)
+            setWishlistItems(0)
           }
-        } catch (wishlistError) {
-          // Wishlist API might not exist yet, use fallback
-          console.log('Wishlist API not available, using fallback')
-          setWishlistItems(0)
         }
 
       } catch (error) {

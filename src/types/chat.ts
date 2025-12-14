@@ -7,7 +7,7 @@ export interface ChatMessage {
   sender_id: string
   sender_name: string
   content: string
-  type: 'text' | 'image' | 'offer' | 'system'
+  type: 'text' | 'image' | 'offer' | 'system' | 'product'
   status: MessageStatus
   timestamp: string
   attachment_urls?: string[]
