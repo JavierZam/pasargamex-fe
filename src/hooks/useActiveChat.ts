@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useWebSocketContext } from '@/contexts/WebSocketContext'
 import { useFirebaseAuth } from '@/hooks/useFirebaseAuth'
 import { buildApiUrl, API_CONFIG } from '@/lib/config'
+import type { ChatMessage } from '@/types/chat'
 
 // Hook for managing active chat
 export function useActiveChat(chatId: string | null) {
@@ -33,7 +34,7 @@ export function useActiveChat(chatId: string | null) {
           
           if (data.success && data.data.items) {
             // Transform backend messages to frontend format
-            const transformedMessages = data.data.items.map(msg => ({
+            const transformedMessages = data.data.items.map((msg: Record<string, unknown>) => ({
               id: msg.id,
               chat_id: chatId,
               sender_id: msg.sender_id,
@@ -44,7 +45,7 @@ export function useActiveChat(chatId: string | null) {
               status: msg.status || 'delivered', // Default to delivered since message exists in backend
               attachment_urls: msg.attachment_urls || [],
               metadata: msg.metadata || {}
-            })).sort((a, b) => 
+            })).sort((a: { timestamp: string }, b: { timestamp: string }) => 
               // Sort ascending: oldest first, newest last (like WhatsApp)
               new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
             )
@@ -57,7 +58,7 @@ export function useActiveChat(chatId: string | null) {
             }))
             
             // Send read receipts for unread messages from other users (not our own messages)
-            const unreadMessagesFromOthers = transformedMessages.filter(msg => 
+            const unreadMessagesFromOthers = transformedMessages.filter((msg: ChatMessage) => 
               msg.sender_id !== user?.uid && // Not sent by current user
               msg.status !== 'read' // Not already read
             )
@@ -68,7 +69,7 @@ export function useActiveChat(chatId: string | null) {
               // Send read receipts for each unread message from other users
               // Use setTimeout to avoid race conditions with WebSocket connection
               setTimeout(() => {
-                unreadMessagesFromOthers.forEach(msg => {
+                unreadMessagesFromOthers.forEach((msg: ChatMessage) => {
                   webSocket.markMessageAsRead(chatId, msg.id)
                 })
               }, 500)
