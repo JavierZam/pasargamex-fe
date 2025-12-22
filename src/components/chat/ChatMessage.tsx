@@ -262,17 +262,41 @@ export function ChatMessageComponent({ message, isCurrentUser, onPaymentAction }
   }
 
   const getStatusIcon = () => {
+    // WhatsApp-style status indicators
+    const SingleCheck = ({ color }: { color: string }) => (
+      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+        <path d="M3 8L6.5 11.5L13 4" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    )
+    
+    const DoubleCheck = ({ color }: { color: string }) => (
+      <svg className="w-5 h-4" viewBox="0 0 20 16" fill="none">
+        <path d="M1 8L4.5 11.5L11 4" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M6 8L9.5 11.5L16 4" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    )
+
     switch (message.status) {
       case 'sending':
-        return <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+        return (
+          <div className="flex items-center">
+            <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )
       case 'sent':
-        return <div className="w-4 h-4 text-gray-400">✓</div>
+        return <SingleCheck color="#9CA3AF" /> // Gray single check
       case 'delivered':
-        return <div className="w-4 h-4 text-blue-500">✓✓</div>
+        return <DoubleCheck color="#9CA3AF" /> // Gray double check
       case 'read':
-        return <div className="w-4 h-4 text-green-500">✓✓</div>
+        return <DoubleCheck color="#3B82F6" /> // Blue double check (read)
       case 'failed':
-        return <div className="w-4 h-4 text-red-500" title="Message failed to send">❌</div>
+        return (
+          <div className="text-red-500 text-xs" title="Message failed to send">
+            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm0 14a6 6 0 110-12 6 6 0 010 12zm-.5-9v5h1V5h-1zm0 6v1h1v-1h-1z"/>
+            </svg>
+          </div>
+        )
       default:
         return null
     }

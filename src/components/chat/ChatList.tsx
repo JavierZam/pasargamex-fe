@@ -241,7 +241,8 @@ export function ChatList({ selectedChatId, onChatSelect, onNewChat }: ChatListPr
               metadata: {}
             },
             updated_at: data.last_message_at,
-            unread_count: (existingChat.unread_count || 0) + 1
+            // Only increment unread if this chat is NOT currently selected
+            unread_count: chatId === selectedChatId ? 0 : (existingChat.unread_count || 0) + 1
           }
           
           // Re-sort to move this chat to top
@@ -317,9 +318,11 @@ export function ChatList({ selectedChatId, onChatSelect, onNewChat }: ChatListPr
           }
 
           updatedChat.updated_at = new Date().toISOString()
-          // If message from someone else, increment unread count (best-effort)
-          if (lastMessage.sender_id !== user?.uid) {
+          // If message from someone else AND this chat is not currently selected, increment unread
+          if (lastMessage.sender_id !== user?.uid && chatId !== selectedChatId) {
             updatedChat.unread_count = (existingChat?.unread_count || 0) + 1
+          } else if (chatId === selectedChatId) {
+            updatedChat.unread_count = 0 // Reset if currently viewing
           }
 
           chatMap.set(chatId, updatedChat)
@@ -337,7 +340,7 @@ export function ChatList({ selectedChatId, onChatSelect, onNewChat }: ChatListPr
       console.log('✅ Chat list sorted; total:', merged.length, 'Top:', merged[0]?.id?.substring(0,8))
       return merged
     })
-  }, [messages, user?.uid])
+  }, [messages, user?.uid, selectedChatId])
 
   const filteredChats = chats.filter(chat => {
     if (!searchQuery) return true
@@ -451,7 +454,17 @@ export function ChatList({ selectedChatId, onChatSelect, onNewChat }: ChatListPr
               return (
                 <div
                   key={chat.id}
-                  onClick={() => onChatSelect(chat.id, chat)}
+                  onClick={() => {
+                    // Reset unread count when user opens this chat
+                    if (chat.unread_count > 0) {
+                      setChats(prevChats => 
+                        prevChats.map(c => 
+                          c.id === chat.id ? { ...c, unread_count: 0 } : c
+                        )
+                      )
+                    }
+                    onChatSelect(chat.id, chat)
+                  }}
                   className={`
                     p-4 cursor-pointer transition-all duration-300 border-l-4 border-transparent relative overflow-hidden
                     ${isSelected 
